@@ -1,0 +1,112 @@
+@startuml BitkrubUseCase
+
+skinparam backgroundColor #ffffff
+
+title Cloud Spa - Massage Reservation System Use Case Diagram
+
+skinparam usecase {
+    BackgroundColor #ffffff
+    BorderColor #4f46e5
+    ArrowColor #4f46e5
+}
+
+skinparam actor {
+    BorderColor #4f46e5
+    BackgroundColor #e0e7ff
+}
+
+left to right direction
+
+actor "Guest" as Guest #e0e7ff
+actor "Registered User" as RegUser #dbeafe
+actor "Admin" as Admin #dcfce7
+
+' Inheritance relationships (dashed lines)
+RegUser --|> Guest : extends
+Admin --|> RegUser : extends
+
+rectangle "Cloud Spa System" {
+    
+    package "Authentication" #f0f9ff {
+        usecase "Register Account" as UC_Register
+        usecase "Login" as UC_Login
+        usecase "Logout" as UC_Logout
+    }
+    
+    package "Shop & Service Discovery" #f0fdf4 {
+        usecase "Browse Shops" as UC_ViewShops
+        usecase "View Shop Details" as UC_ShopDetails
+        usecase "Browse Services" as UC_ViewServices
+        usecase "View Service Details" as UC_ServiceDetails
+        usecase "Search Shops & Services" as UC_Search
+    }
+    
+    package "Shop Management" #fef3c7 {
+        usecase "Create Shop" as UC_CreateShop
+        usecase "Update Shop" as UC_UpdateShop
+        usecase "Delete Shop" as UC_DeleteShop
+    }
+    
+    package "Service Management" #fef3c7 {
+        usecase "Create Service" as UC_CreateService
+        usecase "Update Service" as UC_UpdateService
+        usecase "Delete Service" as UC_DeleteService
+    }
+    
+    package "Reservation System" #fce7f3 {
+        usecase "Create Reservation" as UC_CreateRes
+        usecase "View My Reservations" as UC_ViewMyRes
+        usecase "View All Reservations" as UC_ViewAllRes
+        usecase "Update My Reservation" as UC_UpdateRes
+        usecase "Cancel My Reservation" as UC_CancelRes
+    }
+}
+
+' Guest permissions - Blue arrows
+skinparam arrow {
+    Color #3b82f6
+}
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_ViewShops
+Guest --> UC_ShopDetails
+Guest --> UC_ViewServices
+Guest --> UC_ServiceDetails
+Guest --> UC_Search
+
+' Registered User permissions - Green arrows
+skinparam arrow {
+    Color #10b981
+}
+RegUser --> UC_Logout
+RegUser --> UC_CreateRes
+RegUser --> UC_ViewMyRes
+RegUser --> UC_UpdateRes
+RegUser --> UC_CancelRes
+
+' Admin permissions - Purple/Red arrows
+skinparam arrow {
+    Color #8b5cf6
+}
+Admin --> UC_CreateShop
+Admin --> UC_UpdateShop
+Admin --> UC_DeleteShop
+Admin --> UC_CreateService
+Admin --> UC_UpdateService
+Admin --> UC_DeleteService
+
+skinparam arrow {
+    Color #ef4444
+}
+Admin --> UC_ViewAllRes
+
+' Legend
+legend right
+    |= Color |= Actor Type |
+    | <#3b82f6> | Guest |
+    | <#10b981> | Registered User |
+    | <#8b5cf6> | Admin (Management) |
+    | <#ef4444> | Admin (Supervision) |
+endlegend
+
+@enduml

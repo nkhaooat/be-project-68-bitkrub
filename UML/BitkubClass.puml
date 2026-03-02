@@ -1,0 +1,160 @@
+@startuml BitkrubClass
+
+skinparam backgroundColor #ffffff
+
+title Cloud Spa - Massage Reservation System Class Diagram
+
+package "Models" {
+    class User {
+        *_id: ObjectId <<generated>>
+        *createdAt: Date <<generated>>
+        --
+        *name: String
+        *email: String
+        *password: String
+        *telephone: String
+        *role: String
+        --
+        +register()
+        +login()
+        +logout()
+    }
+    
+    class MassageShop {
+        *_id: ObjectId <<generated>>
+        --
+        *name: String
+        *address: String
+        *location: String
+        *tel: String
+        *map: String
+        *openTime: String
+        *closeTime: String
+        *priceRangeMin: Number
+        *priceRangeMax: Number
+        --
+        +getServices()
+        +getReservations()
+    }
+    
+    class MassageService {
+        *_id: ObjectId <<generated>>
+        *shop: ObjectId <<FK>>
+        *createdAt: Date <<generated>>
+        --
+        *name: String
+        *area: Enum
+        *duration: Number
+        *oil: Enum
+        *price: Number
+        *sessions: Number
+        *description: String
+    }
+    
+    class Reservation {
+        *_id: ObjectId <<generated>>
+        *user: ObjectId <<FK>>
+        *shop: ObjectId <<FK>>
+        *service: ObjectId <<FK>>
+        *createdAt: Date <<generated>>
+        --
+        *resvDate: Date
+        *status: Enum
+    }
+}
+
+
+package "Controllers" {
+    class AuthController {
+        +register(req, res)
+        +login(req, res)
+        +logout(req, res)
+        +getMe(req, res)
+    }
+    
+    class ShopController {
+        +getShops(req, res)
+        +getShop(req, res)
+        +createShop(req, res)
+        +updateShop(req, res)
+        +deleteShop(req, res)
+    }
+    
+    class ServiceController {
+        +getServices(req, res)
+        +getService(req, res)
+        +createService(req, res)
+        +updateService(req, res)
+        +deleteService(req, res)
+    }
+    
+    class ReservationController {
+        +getReservations(req, res)
+        +createReservation(req, res)
+        +updateReservation(req, res)
+        +deleteReservation(req, res)
+    }
+}
+
+package "Middleware" {
+    class AuthMiddleware {
+        +protect(req, res, next)
+        +authorize(...roles)
+    }
+}
+
+package "Routes" {
+    class AuthRoutes {
+        +POST /register
+        +POST /login
+        +GET /logout
+        +GET /me
+    }
+    
+    class ShopRoutes {
+        +GET /
+        +GET /:id
+        +POST /
+        +PUT /:id
+        +DELETE /:id
+        +GET /:shopId/services
+    }
+    
+    class ServiceRoutes {
+        +GET /
+        +GET /:id
+        +POST /
+        +PUT /:id
+        +DELETE /:id
+    }
+    
+    class ReservationRoutes {
+        +GET /
+        +POST /
+        +PUT /:id
+        +DELETE /:id
+    }
+}
+
+' Relationships
+User ||--o{ Reservation : makes >
+MassageShop ||--o{ MassageService : offers >
+MassageShop ||--o{ Reservation : receives >
+MassageService ||--o{ Reservation : booked as >
+
+AuthController ..> User : uses >
+ShopController ..> MassageShop : uses >
+ServiceController ..> MassageService : uses >
+ReservationController ..> Reservation : uses >
+
+AuthRoutes ..> AuthController : delegates >
+ShopRoutes ..> ShopController : delegates >
+ServiceRoutes ..> ServiceController : delegates >
+ReservationRoutes ..> ReservationController : delegates >
+
+AuthMiddleware ..> AuthController : protects >
+AuthMiddleware ..> ShopController : protects >
+AuthMiddleware ..> ServiceController : protects >
+AuthMiddleware ..> ReservationController : protects >
+
+@enduml
