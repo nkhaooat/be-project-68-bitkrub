@@ -1,0 +1,187 @@
+@startuml BitkrubSequenceFull
+skinparam backgroundColor #f1f5f9
+
+title <color:#1e293b><b>Cloud Spa - Full System Sequence Diagram</b></color>
+
+' =========================
+' GLOBAL STYLE
+' =========================
+skinparam sequence {
+    ArrowColor #4338ca
+    LifeLineBorderColor #64748b
+    LifeLineBackgroundColor #e2e8f0
+    ParticipantBorderColor #4338ca
+    ParticipantBackgroundColor #ffffff
+    ParticipantFontColor #0f172a
+    ActorBorderColor #4338ca
+    ActorFontColor #0f172a
+    ActorBackgroundColor #c7d2fe
+}
+
+skinparam database {
+    BackgroundColor #d1fae5
+    BorderColor #059669
+}
+
+' =========================
+' ACTORS
+' =========================
+actor User #c7d2fe
+actor Admin #bbf7d0
+
+' =========================
+' PARTICIPANTS
+' =========================
+participant "Frontend\n(React/HTML)" as Frontend
+participant "Auth Middleware\n(protect)" as Protect
+participant "Role Middleware\n(authorize)" as Authorize
+participant "Auth Controller" as Auth
+participant "Shop Controller" as Shop
+participant "Service Controller" as Service
+participant "Reservation Controller" as Reservation
+database "MongoDB" as DB
+
+' =====================================================
+' AUTHENTICATION
+' =====================================================
+== <color:#4338ca><b>User Login</b></color> ==
+
+User -> Frontend: Enter email & password
+Frontend -> Auth: POST /api/v1/auth/login
+activate Auth #e0e7ff
+Auth -> DB: Find user by email
+activate DB #bbf7d0
+DB --> Auth: User data
+deactivate DB
+Auth -> Auth: Compare password
+alt Password correct
+    Auth -> Auth: Generate JWT
+    Auth --> Frontend: Token + user info
+    Frontend --> User: Redirect to dashboard
+else Invalid credentials
+    Auth --> Frontend: 401 Unauthorized
+    Frontend --> User: Show error
+end
+deactivate Auth
+
+' =====================================================
+' VIEW SHOPS
+' =====================================================
+== <color:#4338ca><b>Browse Shops</b></color> ==
+
+User -> Frontend: View shops
+Frontend -> Shop: GET /api/v1/shops
+activate Shop #e0e7ff
+Shop -> DB: Query all shops
+activate DB #bbf7d0
+DB --> Shop: Shops list
+deactivate DB
+Shop --> Frontend: Return JSON
+Frontend --> User: Display shops
+deactivate Shop
+
+' =====================================================
+' CREATE RESERVATION
+' =====================================================
+== <color:#4338ca><b>Create Reservation</b></color> ==
+
+User -> Frontend: Click "Book Now"
+Frontend -> Reservation: POST /api/v1/reservations
+activate Reservation #e0e7ff
+
+Reservation -> Protect: Verify JWT
+activate Protect #fef9c3
+Protect --> Reservation: Authenticated
+deactivate Protect
+
+Reservation -> DB: Count user reservations
+activate DB #bbf7d0
+DB --> Reservation: Booking count
+deactivate DB
+
+alt Booking count < 3
+    Reservation -> DB: Check service availability
+    activate DB #bbf7d0
+    DB --> Reservation: Service data
+    deactivate DB
+
+    alt Service available
+        Reservation -> DB: Create reservation
+        activate DB #bbf7d0
+        DB --> Reservation: New reservation
+        Reservation -> DB: Update service status
+        DB --> Reservation: Updated
+        deactivate DB
+        Reservation --> Frontend: 201 Created
+        Frontend --> User: Show confirmation
+    else Service unavailable
+        Reservation --> Frontend: 400 Bad Request
+        Frontend --> User: Show unavailable message
+    end
+else Booking limit reached
+    Reservation --> Frontend: 403 Max bookings reached
+    Frontend --> User: Show error
+end
+deactivate Reservation
+
+' =====================================================
+' ADMIN CREATE SHOP
+' =====================================================
+== <color:#059669><b>Admin: Create Shop</b></color> ==
+
+Admin -> Frontend: Add new shop
+Frontend -> Shop: POST /api/v1/shops
+activate Shop #dcfce7
+
+Shop -> Protect: Verify JWT
+activate Protect #fef9c3
+Protect --> Shop: Authenticated
+deactivate Protect
+
+Shop -> Authorize: Check role = admin
+activate Authorize #fde68a
+Authorize --> Shop: Authorized
+deactivate Authorize
+
+Shop -> DB: Insert shop document
+activate DB #bbf7d0
+DB --> Shop: Created shop
+deactivate DB
+
+Shop --> Frontend: 201 Created
+Frontend --> Admin: Show success
+deactivate Shop
+
+' =====================================================
+' CANCEL RESERVATION
+' =====================================================
+== <color:#4338ca><b>Cancel Reservation</b></color> ==
+
+User -> Frontend: Click cancel
+Frontend -> Reservation: DELETE /api/v1/reservations/:id
+activate Reservation #e0e7ff
+
+Reservation -> Protect: Verify JWT
+activate Protect #fef9c3
+Protect --> Reservation: Authenticated
+deactivate Protect
+
+Reservation -> DB: Find reservation
+activate DB #bbf7d0
+DB --> Reservation: Reservation data
+
+alt User owns reservation
+    Reservation -> DB: Delete reservation
+    Reservation -> DB: Update service status
+    DB --> Reservation: Success
+    Reservation --> Frontend: 200 OK
+    Frontend --> User: Show success
+else Not owner
+    Reservation --> Frontend: 403 Forbidden
+    Frontend --> User: Show error
+end
+
+deactivate DB
+deactivate Reservation
+
+@enduml
