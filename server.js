@@ -22,7 +22,17 @@ app.use(express.json());
 app.use(cookieParser());
 
 //Enable CORS
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://address-me-draft.vercel.app',
+    'https://*.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 
 //Load env vars
 dotenv.config({ path: './config/config.env' });
