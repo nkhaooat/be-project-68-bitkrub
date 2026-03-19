@@ -3,7 +3,6 @@ const { setServers } = require("node:dns/promises");
 setServers(["1.1.1.1", "8.8.8.8"]);
 
 const express = require('express');
-const path = require('path');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -40,18 +39,25 @@ dotenv.config({ path: './config/config.env' });
 //Connect to database
 connectDB();
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Mount routers
 app.use('/api/v1/shops', shops);
 app.use('/api/v1/services', services);
 app.use('/api/v1/auth', auth);
 app.use('/api/v1/reservations', reservations);
 
-// Serve index.html for root route
+// API root route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.json({
+    success: true,
+    message: 'Dungeon Inn API',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/v1/auth',
+      shops: '/api/v1/shops',
+      services: '/api/v1/services',
+      reservations: '/api/v1/reservations'
+    }
+  });
 });
 
 const PORT= process.env.PORT || 5000;
