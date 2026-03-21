@@ -58,13 +58,12 @@ exports.getReservations = async (req, res, next) => {
 
         const reservations = await query;
 
-        const pagination = {};
-        if (endIndex < total) {
-            pagination.next = { page: page + 1, limit };
-        }
-        if (startIndex > 0) {
-            pagination.prev = { page: page - 1, limit };
-        }
+        const pagination = {
+            total,
+            page,
+            pages: Math.ceil(total / limit),
+            limit
+        };
 
         res.status(200).json({
             success: true,
