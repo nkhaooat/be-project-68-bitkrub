@@ -5,50 +5,81 @@ const MassageShop = require('../models/MassageShop');
 // @access  Public
 exports.getShops = async (req, res, next) => {
     try {
-        let query;
-        const reqQuery = { ...req.query };
-        const removeFields = ['select', 'sort', 'page', 'limit'];
-        removeFields.forEach(param => delete reqQuery[param]);
+        let query = {};
+        let sortQuery = {};
 
-        let queryStr = JSON.stringify(reqQuery);
-        queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
-        query = MassageShop.find(JSON.parse(queryStr));
-
-        if (req.query.select) {
-            const fields = req.query.select.split(',').join(' ');
-            query = query.select(fields);
+        // Search by name
+        if (req.query.search) {
+            query.name = { $regex: req.query.search, $options: 'i' };
         }
 
-        if (req.query.sort) {
-            const sortBy = req.query.sort.split(',').join(' ');
-            query = query.sort(sortBy);
+        // Filter by search area
+        if (req.query.searchArea) {
+            query.searchArea = req.query.searchArea;
+        }
+
+        // Filter by minimum rating
+        if (req.query.minRating) {
+            query.rating = { $gte: parseFloat(req.query.minRating) };
+        }
+
+        // Filter by price range
+        if (req.query.minPrice || req.query.maxPrice) {
+            query.priceRangeMin = {};
+            if (req.query.minPrice) query.priceRangeMin.$gte = parseInt(req.query.minPrice);
+            if (req.query.maxPrice) query.priceRangeMin.$lte = parseInt(req.query.maxPrice);
+        }
+
+        // Sorting
+        const sortBy = req.query.sortBy || 'rating';
+        const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+        
+        if (sortBy === 'price') {
+            sortQuery.priceRangeMin = sortOrder;
+        } else if (sortBy === 'name') {
+            sortQuery.name = sortOrder;
         } else {
-            query = query.sort('-createdAt');
+            sortQuery.rating = sortOrder;
         }
 
         const page = parseInt(req.query.page, 10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 25;
+        const limit = parseInt(req.query.limit, 10) || 12;
         const startIndex = (page - 1) * limit;
-        const endIndex = page * limit;
-        const total = await MassageShop.countDocuments();
+        const total = await MassageShop.countDocuments(query);
 
-        query = query.skip(startIndex).limit(limit);
+        const shops = await MassageShop.find(query)
+            .sort(sortQuery)
+            .skip(startIndex)
+            .limit(limit);
 
-        const shops = await query;
-
-        const pagination = {};
-        if (endIndex < total) {
-            pagination.next = { page: page + 1, limit };
-        }
-        if (startIndex > 0) {
-            pagination.prev = { page: page - 1, limit };
-        }
+        const pages = Math.ceil(total / limit);
 
         res.status(200).json({
             success: true,
             count: shops.length,
-            pagination,
+            pagination: {
+                total,
+                page,
+                pages,
+                limit
+            },
             data: shops
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Get all shop areas
+// @route   GET /api/v1/shops/areas
+// @access  Public
+exports.getShopAreas = async (req, res, next) => {
+    try {
+        const areas = await MassageShop.distinct('searchArea');
+        res.status(200).json({
+            success: true,
+            count: areas.length,
+            data: areas.filter(area => area) // Remove null/undefined
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });

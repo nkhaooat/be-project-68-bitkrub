@@ -184,7 +184,11 @@ exports.updateReservation = async (req, res, next) => {
         reservation = await Reservation.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true
-        });
+        }).populate([
+            { path: 'shop', select: 'name address location tel openTime closeTime' },
+            { path: 'service', select: 'name area duration oil price sessions' },
+            { path: 'user', select: 'name email telephone' }
+        ]);
 
         res.status(200).json({ success: true, data: reservation });
     } catch (err) {
