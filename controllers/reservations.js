@@ -9,10 +9,13 @@ exports.getReservations = async (req, res, next) => {
     try {
         let query;
         
-        if (req.user.role === 'admin') {
-            // Admin can see all reservations with filters
+        // Check if user wants to see only their own bookings (myBookings=true)
+        const myBookingsOnly = req.query.myBookings === 'true';
+        
+        if (req.user.role === 'admin' && !myBookingsOnly) {
+            // Admin can see all reservations with filters (when accessing admin panel)
             let reqQuery = { ...req.query };
-            const removeFields = ['select', 'sort', 'page', 'limit'];
+            const removeFields = ['select', 'sort', 'page', 'limit', 'myBookings'];
             removeFields.forEach(param => delete reqQuery[param]);
 
             // Date range filter
@@ -28,7 +31,7 @@ exports.getReservations = async (req, res, next) => {
             queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
             query = Reservation.find(JSON.parse(queryStr));
         } else {
-            // Regular user can only see their own reservations
+            // Regular user or admin viewing "My Bookings" - show only their own reservations
             query = Reservation.find({ user: req.user.id });
         }
 
