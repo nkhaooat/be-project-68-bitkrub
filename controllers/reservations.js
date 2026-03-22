@@ -198,19 +198,19 @@ exports.updateReservation = async (req, res, next) => {
     }
 };
 
-// @desc    Delete/cancel reservation
+// @desc    Cancel reservation (soft delete - update status to canceled)
 // @route   DELETE /api/v1/reservations/:id
 // @access  Private
 exports.deleteReservation = async (req, res, next) => {
     try {
-        const reservation = await Reservation.findById(req.params.id);
+        let reservation = await Reservation.findById(req.params.id);
 
         if (!reservation) {
             return res.status(404).json({ success: false, message: `Reservation not found with id of ${req.params.id}` });
         }
 
-        // Admin can delete any reservation
-        // User can only delete their own and only if more than 1 day before reservation date
+        // Admin can cancel any reservation
+        // User can only cancel their own and only if more than 1 day before reservation date
         if (req.user.role !== 'admin') {
             if (reservation.user.toString() !== req.user.id) {
                 return res.status(403).json({ success: false, message: 'Not authorized to cancel this reservation' });
@@ -230,9 +230,15 @@ exports.deleteReservation = async (req, res, next) => {
             }
         }
 
-        await reservation.deleteOne();
+        // Soft delete: update status to canceled instead of deleting
+        reservation.status = 'canceled';
+        await reservation.save();
 
-        res.status(200).json({ success: true, data: {} });
+        res.status(200).json({ 
+            success: true, 
+            message: 'Reservation canceled successfully',
+            data: reservation 
+        });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
