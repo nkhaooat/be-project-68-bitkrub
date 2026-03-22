@@ -230,13 +230,13 @@ exports.deleteReservation = async (req, res, next) => {
             }
         }
 
-        // Soft delete: update status to canceled instead of deleting
-        reservation.status = 'canceled';
+        // Soft delete: update status to cancelled instead of deleting
+        reservation.status = 'cancelled';
         await reservation.save();
 
         res.status(200).json({ 
             success: true, 
-            message: 'Reservation canceled successfully',
+            message: 'Reservation cancelled successfully',
             data: reservation 
         });
     } catch (err) {
