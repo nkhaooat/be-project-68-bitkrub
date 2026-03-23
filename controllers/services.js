@@ -12,7 +12,10 @@ exports.getServices = async (req, res, next) => {
         
         if (req.params.shopId) {
             mongoQuery = { shop: req.params.shopId };
-            query = MassageService.find(mongoQuery);
+            query = MassageService.find(mongoQuery).populate({
+                path: 'shop',
+                select: 'name address location tel'
+            });
         } else {
             let reqQuery = { ...req.query };
             const removeFields = ['select', 'sort', 'page', 'limit', 'search'];
