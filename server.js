@@ -24,8 +24,7 @@ app.use(cookieParser());
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://fe-project-68-addressme.vercel.app',
-    'https://*.vercel.app'
+    'https://fe-project-68-addressme.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
