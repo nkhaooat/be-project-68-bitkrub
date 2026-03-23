@@ -32,6 +32,11 @@ exports.getServices = async (req, res, next) => {
                 mongoQuery.name = { $regex: req.query.search, $options: 'i' };
             }
             
+            // Add shop filter if provided
+            if (req.query.shop) {
+                mongoQuery.shop = req.query.shop;
+            }
+            
             query = MassageService.find(mongoQuery).populate({
                 path: 'shop',
                 select: 'name address location tel'
