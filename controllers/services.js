@@ -38,25 +38,22 @@ exports.getServices = async (req, res, next) => {
         const page = parseInt(req.query.page, 10) || 1;
         const limit = parseInt(req.query.limit, 10) || 25;
         const startIndex = (page - 1) * limit;
-        const endIndex = page * limit;
         const total = await MassageService.countDocuments();
+        const pages = Math.ceil(total / limit);
 
         query = query.skip(startIndex).limit(limit);
 
         const services = await query;
 
-        const pagination = {};
-        if (endIndex < total) {
-            pagination.next = { page: page + 1, limit };
-        }
-        if (startIndex > 0) {
-            pagination.prev = { page: page - 1, limit };
-        }
-
         res.status(200).json({
             success: true,
             count: services.length,
-            pagination,
+            pagination: {
+                total,
+                page,
+                pages,
+                limit
+            },
             data: services
         });
     } catch (err) {
