@@ -8,16 +8,28 @@ const MassageShop = require('../models/MassageShop');
 exports.getServices = async (req, res, next) => {
     try {
         let query;
+        let mongoQuery = {};
+        
         if (req.params.shopId) {
-            query = MassageService.find({ shop: req.params.shopId });
+            mongoQuery = { shop: req.params.shopId };
+            query = MassageService.find(mongoQuery);
         } else {
             let reqQuery = { ...req.query };
-            const removeFields = ['select', 'sort', 'page', 'limit'];
+            const removeFields = ['select', 'sort', 'page', 'limit', 'search'];
             removeFields.forEach(param => delete reqQuery[param]);
 
             let queryStr = JSON.stringify(reqQuery);
             queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
-            query = MassageService.find(JSON.parse(queryStr)).populate({
+            
+            // Build base query
+            mongoQuery = JSON.parse(queryStr);
+            
+            // Add text search if provided
+            if (req.query.search) {
+                mongoQuery.name = { $regex: req.query.search, $options: 'i' };
+            }
+            
+            query = MassageService.find(mongoQuery).populate({
                 path: 'shop',
                 select: 'name address location tel'
             });
@@ -38,7 +50,9 @@ exports.getServices = async (req, res, next) => {
         const page = parseInt(req.query.page, 10) || 1;
         const limit = parseInt(req.query.limit, 10) || 25;
         const startIndex = (page - 1) * limit;
-        const total = await MassageService.countDocuments();
+        
+        // Get filtered count for pagination
+        const total = await MassageService.countDocuments(mongoQuery);
         const pages = Math.ceil(total / limit);
 
         query = query.skip(startIndex).limit(limit);
