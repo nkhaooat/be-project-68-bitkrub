@@ -219,14 +219,15 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   // Embed the user query
   const queryEmbedding = await embed(userMessage);
 
-  // Retrieve relevant chunks
-  const hits = retrieve(queryEmbedding, 12);
-  const context = hits.map((h) => h.text).join('\n\n---\n\n');
+  // Retrieve relevant chunks — filter out service chunks from other shops when a shop is pinned
+  const allHits = retrieve(queryEmbedding, 12);
+  // We'll apply shop filter after pinning is resolved below
 
   // --- Shop-pinning: find the shop the user is currently talking about ---
   //     Strategy 1: extract shopId from /shop/:id URL nearest to a shop name in current message
   //     Strategy 2: if no URL match, fall back to longest name match in DB
   let shopPinBlock = '';
+  let mentionedShop = null;
   try {
     const MassageShop = require('./models/MassageShop');
     const MassageService = require('./models/MassageService');
@@ -237,8 +238,6 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
     const shopIdPattern = /\/shop\/([a-f0-9]{24})/gi;
     const allShopIds = [...recentText.matchAll(shopIdPattern)].map(m => m[1]);
     const uniqueShopIds = [...new Set(allShopIds)];
-
-    let mentionedShop = null;
 
     if (uniqueShopIds.length === 1) {
       // Only one shop mentioned — easy
@@ -290,6 +289,8 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
 
       shopPinBlock = `
 --- PINNED SHOP (user is asking about this specific shop) ---
+⚠️ CRITICAL: When booking this shop, you MUST use ONLY the serviceIds listed below.
+DO NOT use any serviceId from the vector retrieval context — those may be from other shops.
 Shop: ${mentionedShop.name}
 shopId: ${mentionedShop._id}
 Area: ${mentionedShop.searchArea || 'Bangkok'}
@@ -306,7 +307,14 @@ ${svcLines}${pinnedServiceNote}
     // non-fatal
   }
 
-  // Build user reservation context block
+  // Filter retrieved chunks: when a shop is pinned, drop service chunks from OTHER shops
+  // to prevent the LLM from accidentally picking wrong serviceIds
+  const hits = mentionedShop
+    ? allHits.filter(h =>
+        h.metadata?.type !== 'service' || h.metadata?.shopId === mentionedShop._id.toString()
+      )
+    : allHits;
+  const context = hits.map((h) => h.text).join('\n\n---\n\n');
   let reservationBlock = '';
   if (userContext) {
     if (userContext.activeCount === 0) {
