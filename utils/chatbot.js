@@ -206,9 +206,10 @@ function retrieve(queryEmbedding, topK = 6) {
 /**
  * @param {string} userMessage
  * @param {{ role: string, content: string }[]} history  - prior turns (optional)
+ * @param {{ activeCount: number, slotsRemaining: number, reservations: object[] } | null} userContext
  * @returns {Promise<string>} assistant reply
  */
-async function chat(userMessage, history = []) {
+async function chat(userMessage, history = [], userContext = null) {
   // Ensure the vector store is built
   if (!storeReady) await buildVectorStore();
 
@@ -218,6 +219,36 @@ async function chat(userMessage, history = []) {
   // Retrieve relevant chunks
   const hits = retrieve(queryEmbedding, 6);
   const context = hits.map((h) => h.text).join('\n\n---\n\n');
+
+  // Build user reservation context block
+  let reservationBlock = '';
+  if (userContext) {
+    if (userContext.activeCount === 0) {
+      reservationBlock = `
+--- USER RESERVATION STATUS ---
+The user is logged in and has 0 active reservations.
+They can book up to 3 services (3 slots remaining).
+--- END ---`;
+    } else {
+      const resvList = userContext.reservations
+        .map((r, i) => `  ${i + 1}. ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}]`)
+        .join('\n');
+      reservationBlock = `
+--- USER RESERVATION STATUS ---
+The user is logged in and has ${userContext.activeCount} active reservation(s) out of a maximum of 3.
+Slots remaining: ${userContext.slotsRemaining}
+Active bookings:
+${resvList}
+${userContext.slotsRemaining === 0 ? 'IMPORTANT: The user cannot make any new bookings until they cancel an existing one.' : ''}
+--- END ---`;
+    }
+  } else {
+    reservationBlock = `
+--- USER STATUS ---
+The user is not logged in (guest). You do not know their reservation status.
+Remind them to log in if they ask about their bookings or want to make a reservation.
+--- END ---`;
+  }
 
   // Build messages
   const now = new Date().toLocaleString('en-US', {
@@ -239,13 +270,17 @@ You help users:
 - Get TikTok video links for shops
 - Navigate to booking pages
 - Know if a shop is currently open based on the current time above
+- Check their own reservation status and remaining booking slots
 
-Use the context below (retrieved from our database) to answer accurately.
-If a booking link is relevant, include it as a relative URL like /booking?shop=SHOP_ID&service=SERVICE_ID.
-If TikTok links are available and the user asks for them, list them clearly.
-If you don't know something, say so honestly — don't make up shop names or prices.
-Keep answers concise and friendly. Respond in the same language the user uses (Thai or English).
-
+Rules:
+- Users can have at most 3 active (pending/confirmed) reservations at a time
+- Users can cancel reservations up to 1 day before the reservation date
+- If the user has 3 active reservations, tell them they must cancel one before booking again
+- If a booking link is relevant, include it as a relative URL like /booking?shop=SHOP_ID&service=SERVICE_ID
+- If TikTok links are available and the user asks for them, list them clearly
+- If you don't know something, say so honestly — don't make up shop names or prices
+- Keep answers concise and friendly. Respond in the same language the user uses (Thai or English)
+${reservationBlock}
 --- RETRIEVED CONTEXT ---
 ${context}
 --- END CONTEXT ---`;
