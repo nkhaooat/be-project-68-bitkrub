@@ -60,7 +60,20 @@ exports.chatWithBot = async (req, res) => {
 
     const reply = await chat(message.trim(), history, userContext, weather);
 
-    res.json({ success: true, reply });
+    // Parse booking action if present
+    const bookMatch = reply.match(/\[\[BOOK:(\{[^\]]+\})\]\]/);
+    let action = null;
+    let cleanReply = reply;
+    if (bookMatch) {
+      try {
+        action = { type: 'create_reservation', ...JSON.parse(bookMatch[1]) };
+        cleanReply = reply.replace(/\[\[BOOK:\{[^\]]+\}\]\]\n?/, '').trim();
+      } catch {
+        // malformed action — just send reply as-is
+      }
+    }
+
+    res.json({ success: true, reply: cleanReply, action });
   } catch (err) {
     console.error('[chat] Error:', err);
     res.status(500).json({ success: false, message: 'Chatbot error. Please try again.' });
