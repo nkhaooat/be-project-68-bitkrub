@@ -220,13 +220,25 @@ async function chat(userMessage, history = []) {
   const context = hits.map((h) => h.text).join('\n\n---\n\n');
 
   // Build messages
+  const now = new Date().toLocaleString('en-US', {
+    timeZone: 'Asia/Bangkok',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   const systemPrompt = `You are a helpful assistant for "Dungeon Inn", a massage shop booking website in Bangkok, Thailand.
+Current date and time (Bangkok, GMT+7): ${now}
 
 You help users:
 - Find massage shops (by location, price, type, rating, hours)
 - Learn about services (type, duration, oil, price)
 - Get TikTok video links for shops
 - Navigate to booking pages
+- Know if a shop is currently open based on the current time above
 
 Use the context below (retrieved from our database) to answer accurately.
 If a booking link is relevant, include it as a relative URL like /booking?shop=SHOP_ID&service=SERVICE_ID.
