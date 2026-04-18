@@ -199,6 +199,28 @@ function retrieve(queryEmbedding, topK = 6) {
     .slice(0, topK);
 }
 
+
+// ---------------------------------------------------------------------------
+// Live weather fetch (Bangkok - GISTDA API, area id 103301)
+// ---------------------------------------------------------------------------
+async function fetchWeather() {
+  try {
+    const res = await fetch('https://pm25.gistda.or.th/rest/getWeatherbyArea?id=103301', {
+      signal: AbortSignal.timeout(4000)
+    });
+    const json = await res.json();
+    const d = json?.data?.[0];
+    if (!d) return null;
+    return {
+      temp: d.temperature_2m,
+      wind: d.windspeed_10m_max,
+      rainChance: d.precipitation_probability_max,
+    };
+  } catch {
+    return null; // fail silently — don't block chatbot
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main chat function
 // ---------------------------------------------------------------------------
@@ -213,8 +235,11 @@ async function chat(userMessage, history = [], userContext = null) {
   // Ensure the vector store is built
   if (!storeReady) await buildVectorStore();
 
-  // Embed the user query
-  const queryEmbedding = await embed(userMessage);
+  // Fetch weather + embed in parallel
+  const [queryEmbedding, weather] = await Promise.all([
+    embed(userMessage),
+    fetchWeather(),
+  ]);
 
   // Retrieve relevant chunks
   const hits = retrieve(queryEmbedding, 6);
@@ -250,6 +275,11 @@ Remind them to log in if they ask about their bookings or want to make a reserva
 --- END ---`;
   }
 
+  // Build weather context
+  const weatherBlock = weather
+    ? `Current Bangkok weather: ${weather.temp.toFixed(1)}°C, wind ${weather.wind.toFixed(1)} km/h, rain chance ${weather.rainChance}%.`
+    : '';
+
   // Build messages
   const now = new Date().toLocaleString('en-US', {
     timeZone: 'Asia/Bangkok',
@@ -263,6 +293,7 @@ Remind them to log in if they ask about their bookings or want to make a reserva
 
   const systemPrompt = `You are a helpful assistant for "Dungeon Inn", a massage shop booking website in Bangkok, Thailand.
 Current date and time (Bangkok, GMT+7): ${now}
+${weatherBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
 You help users:
