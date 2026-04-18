@@ -391,6 +391,16 @@ For the resvDate, use today's date with the requested time in ISO 8601 format wi
 Only emit [[BOOK:...]] when the user has explicitly confirmed (said yes/ใช่/ยืนยัน/confirm/ok/โอเค etc.) AND you have both shopId and serviceId available.
 Never make up IDs — only use IDs from the retrieved context.
 
+EDIT ACTION:
+When the user confirms they want to change the date/time of a specific reservation,
+respond with ONLY this exact JSON on its own line:
+[[EDIT:{"reservationId":"RESERVATION_ID","resvDate":"ISO_DATETIME"}]]
+Then on the next line, add a friendly message saying the change is being processed.
+Use the reservation ID from the USER RESERVATION STATUS block.
+For the new resvDate, use the requested date/time in ISO 8601 format with Bangkok timezone offset (+07:00).
+Only emit [[EDIT:...]] when the user has explicitly confirmed the new time AND you have the reservation ID.
+Same 1-day rule applies: can only edit if more than 24 hours before the original reservation date.
+
 CANCEL ACTION:
 When the user confirms they want to cancel a specific reservation,
 respond with ONLY this exact JSON on its own line:
