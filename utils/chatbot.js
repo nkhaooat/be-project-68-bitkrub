@@ -102,7 +102,7 @@ async function buildVectorStore() {
       // --- Shop summary chunk ---
       const shopText = [
         `Shop: ${shop.name}`,
-        `Location: ${shop.location}`,
+        `Location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
         `Address: ${shop.address}`,
         `Phone: ${shop.tel}`,
         `Hours: ${shop.openTime} – ${shop.closeTime}`,

@@ -52,6 +52,10 @@ const MassageShopSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    searchArea: {
+        type: String,
+        default: null
+    },
     description: {
         type: String,
         default: null
