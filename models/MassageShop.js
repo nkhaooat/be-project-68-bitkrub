@@ -51,6 +51,14 @@ const MassageShopSchema = new mongoose.Schema({
     placeId:{
         type: String,
         default: null
+    },
+    description: {
+        type: String,
+        default: null
+    },
+    tiktokLinks: {
+        type: [String],
+        default: []
     }
 }, {
     toJSON: { virtuals: true },

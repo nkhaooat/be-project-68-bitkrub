@@ -131,6 +131,96 @@ exports.updateShop = async (req, res, next) => {
     }
 };
 
+// @desc    Add TikTok links to a shop
+// @route   POST /api/v1/shops/:id/tiktok
+// @access  Private/Admin
+exports.addTiktokLinks = async (req, res, next) => {
+    try {
+        const { links } = req.body; // links: string[]
+        if (!links || !Array.isArray(links) || links.length === 0) {
+            return res.status(400).json({ success: false, message: 'links array is required' });
+        }
+        // Validate TikTok URLs
+        const validLinks = links.filter(l => typeof l === 'string' && l.includes('tiktok.com'));
+        if (validLinks.length === 0) {
+            return res.status(400).json({ success: false, message: 'No valid TikTok URLs provided' });
+        }
+        const shop = await MassageShop.findByIdAndUpdate(
+            req.params.id,
+            { $addToSet: { tiktokLinks: { $each: validLinks } } },
+            { new: true }
+        );
+        if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+        res.status(200).json({ success: true, data: shop.tiktokLinks });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Update (replace) TikTok links for a shop
+// @route   PUT /api/v1/shops/:id/tiktok
+// @access  Private/Admin
+exports.updateTiktokLinks = async (req, res, next) => {
+    try {
+        const { links } = req.body; // links: string[]
+        if (!Array.isArray(links)) {
+            return res.status(400).json({ success: false, message: 'links array is required' });
+        }
+        const validLinks = links.filter(l => typeof l === 'string' && l.includes('tiktok.com'));
+        const shop = await MassageShop.findByIdAndUpdate(
+            req.params.id,
+            { $set: { tiktokLinks: validLinks } },
+            { new: true }
+        );
+        if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+        res.status(200).json({ success: true, data: shop.tiktokLinks });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Remove a specific TikTok link from a shop
+// @route   DELETE /api/v1/shops/:id/tiktok
+// @access  Private/Admin
+exports.removeTiktokLink = async (req, res, next) => {
+    try {
+        const { link } = req.body; // link: string (single URL to remove)
+        if (!link) {
+            return res.status(400).json({ success: false, message: 'link is required' });
+        }
+        const shop = await MassageShop.findByIdAndUpdate(
+            req.params.id,
+            { $pull: { tiktokLinks: link } },
+            { new: true }
+        );
+        if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+        res.status(200).json({ success: true, data: shop.tiktokLinks });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Update shop description
+// @route   PUT /api/v1/shops/:id/description
+// @access  Private/Admin
+exports.updateDescription = async (req, res, next) => {
+    try {
+        const { description } = req.body;
+        if (typeof description !== 'string') {
+            return res.status(400).json({ success: false, message: 'description string is required' });
+        }
+        const shop = await MassageShop.findByIdAndUpdate(
+            req.params.id,
+            { $set: { description: description.trim() || null } },
+            { new: true }
+        );
+        if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+        res.status(200).json({ success: true, data: { description: shop.description } });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
 // @desc    Delete massage shop
 // @route   DELETE /api/v1/shops/:id
 // @access  Private/Admin

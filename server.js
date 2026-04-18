@@ -11,6 +11,7 @@ const shops = require('./routes/shops');
 const services = require('./routes/services');
 const auth = require('./routes/auth');
 const reservations = require('./routes/reservations');
+const chat = require('./routes/chat');
 
 const app = express();
 
@@ -38,11 +39,22 @@ dotenv.config({ path: './config/config.env' });
 //Connect to database
 connectDB();
 
+// Pre-warm chatbot vector store after DB connects
+const { buildVectorStore } = require('./utils/chatbot');
+setTimeout(() => {
+  if (process.env.OPENAI_API_KEY) {
+    buildVectorStore().catch((err) => console.error('[chatbot] pre-warm failed:', err.message));
+  } else {
+    console.warn('[chatbot] OPENAI_API_KEY not set — vector store will build on first request');
+  }
+}, 3000);
+
 // Mount routers
 app.use('/api/v1/shops', shops);
 app.use('/api/v1/services', services);
 app.use('/api/v1/auth', auth);
 app.use('/api/v1/reservations', reservations);
+app.use('/api/v1/chat', chat);
 
 // API root route
 app.get('/', (req, res) => {
