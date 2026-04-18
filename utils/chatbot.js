@@ -235,7 +235,15 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
     const MassageService = require('./models/MassageService');
     // Find any shop whose name appears in the recent conversation
     const allShops = await MassageShop.find({}, '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean();
-    const mentionedShop = allShops.find(s => recentText.includes(s.name.toLowerCase().slice(0, 20)));
+    // Find best (longest name) shop match to avoid short names shadowing longer ones
+    const mentionedShop = allShops
+      .filter(s => {
+        const nameLC = s.name.toLowerCase();
+        // Require at least 10 chars to match to avoid false positives
+        const matchLen = Math.min(nameLC.length, 40);
+        return recentText.includes(nameLC.slice(0, matchLen));
+      })
+      .sort((a, b) => b.name.length - a.name.length)[0]; // longest match wins
     if (mentionedShop) {
       const svcs = await MassageService.find({ shop: mentionedShop._id }, '_id name duration price description').lean();
       const svcLines = svcs.map(s =>
@@ -270,7 +278,7 @@ They can book up to 3 services (3 slots remaining).
 --- END ---`;
     } else {
       const resvList = userContext.reservations
-        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}]`)
+        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [ISO:${r.resvDate}] [${r.status}]`)
         .join('\n');
       reservationBlock = `
 --- USER RESERVATION STATUS ---
@@ -295,7 +303,8 @@ Remind them to log in if they ask about their bookings or want to make a reserva
     : '';
 
   // Build messages
-  const now = new Date().toLocaleString('en-US', {
+  const nowDate = new Date();
+  const now = nowDate.toLocaleString('en-US', {
     timeZone: 'Asia/Bangkok',
     weekday: 'long',
     year: 'numeric',
@@ -304,9 +313,11 @@ Remind them to log in if they ask about their bookings or want to make a reserva
     hour: '2-digit',
     minute: '2-digit',
   });
+  const nowISO = nowDate.toISOString(); // for precise date math
 
   const systemPrompt = `You are a helpful assistant for "Dungeon Inn", a massage shop booking website in Bangkok, Thailand.
 Current date and time (Bangkok, GMT+7): ${now}
+Current UTC timestamp (for precise date math): ${nowISO}
 ${weatherBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
@@ -322,8 +333,9 @@ You help users:
 Rules:
 - Users can have at most 3 active (pending/confirmed) reservations at a time
 - Users can cancel pending or confirmed reservations at least 1 day before the reservation date
-- To check if cancellation is allowed: compare today's date (provided above as current Bangkok time) with the reservation date. If the reservation date is MORE than 1 full day away (i.e. resvDate - today > 24 hours), cancellation is allowed. If it is 1 day or less away, tell the user they cannot cancel and explain when the cutoff was.
-- IMPORTANT: Do the date math carefully. Example: if today is April 18 and the reservation is April 20 at noon, that is ~44 hours away which is MORE than 24 hours, so cancellation IS allowed.
+- To check if cancellation is allowed: subtract the current UTC timestamp (nowISO) from the reservation's ISO date [ISO:...]. If the difference is MORE than 24 hours (86400 seconds), cancellation is allowed. If 24 hours or less, it is not.
+- Example: nowISO=2026-04-18T15:20:00Z, resvDate ISO=2026-04-20T13:00:00Z → difference = ~45.6 hours → cancellation IS allowed.
+- Always use the ISO timestamps for this calculation, never guess from the human-readable date.
 - If the user has 3 active reservations, tell them they must cancel one before booking again
 - Always use relative paths for internal links (e.g. /booking?shop=ID&service=ID, /shop/ID, /mybookings) — NEVER prefix them with any domain name
 - If TikTok links are available and the user asks for them, list them clearly
