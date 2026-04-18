@@ -113,7 +113,7 @@ async function buildVectorStore() {
         hasTiktok
           ? `TikTok videos: ${tiktokLinks.join(', ')}`
           : 'No TikTok videos available for this shop.',
-        `Booking page: /shops/${shopId}`,
+        `Booking page: /shop/${shopId}`,
       ]
         .filter(Boolean)
         .join('\n');
@@ -277,7 +277,7 @@ Rules:
 - Users can have at most 3 active (pending/confirmed) reservations at a time
 - Users can cancel reservations up to 1 day before the reservation date
 - If the user has 3 active reservations, tell them they must cancel one before booking again
-- Always use relative paths for internal links (e.g. /booking?shop=ID&service=ID, /shops/ID, /mybookings) — NEVER prefix them with any domain name
+- Always use relative paths for internal links (e.g. /booking?shop=ID&service=ID, /shop/ID, /mybookings) — NEVER prefix them with any domain name
 - If TikTok links are available and the user asks for them, list them clearly
 - If you don't know something, say so honestly — don't make up shop names or prices
 - Keep answers concise and friendly. Respond in the same language the user uses (Thai or English)
