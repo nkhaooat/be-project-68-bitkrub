@@ -12,6 +12,7 @@ const services = require('./routes/services');
 const auth = require('./routes/auth');
 const reservations = require('./routes/reservations');
 const chat = require('./routes/chat');
+const reviews = require('./routes/reviews');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/v1/services', services);
 app.use('/api/v1/auth', auth);
 app.use('/api/v1/reservations', reservations);
 app.use('/api/v1/chat', chat);
+app.use('/api/v1/reviews', reviews);
 
 // API root route
 app.get('/', (req, res) => {
