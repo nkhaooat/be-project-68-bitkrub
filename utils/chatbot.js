@@ -201,27 +201,6 @@ function retrieve(queryEmbedding, topK = 6) {
 
 
 // ---------------------------------------------------------------------------
-// Live weather fetch (Bangkok - GISTDA API, area id 103301)
-// ---------------------------------------------------------------------------
-async function fetchWeather() {
-  try {
-    const res = await fetch('https://pm25.gistda.or.th/rest/getWeatherbyArea?id=103301', {
-      signal: AbortSignal.timeout(4000)
-    });
-    const json = await res.json();
-    const d = json?.data?.[0];
-    if (!d) return null;
-    return {
-      temp: d.temperature_2m,
-      wind: d.windspeed_10m_max,
-      rainChance: d.precipitation_probability_max,
-    };
-  } catch {
-    return null; // fail silently — don't block chatbot
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Main chat function
 // ---------------------------------------------------------------------------
 
@@ -229,17 +208,15 @@ async function fetchWeather() {
  * @param {string} userMessage
  * @param {{ role: string, content: string }[]} history  - prior turns (optional)
  * @param {{ activeCount: number, slotsRemaining: number, reservations: object[] } | null} userContext
+ * @param {{ temp: number, wind: number, rainChance: number } | null} weather - from client (GISTDA, Thai IP only)
  * @returns {Promise<string>} assistant reply
  */
-async function chat(userMessage, history = [], userContext = null) {
+async function chat(userMessage, history = [], userContext = null, weather = null) {
   // Ensure the vector store is built
   if (!storeReady) await buildVectorStore();
 
-  // Fetch weather + embed in parallel
-  const [queryEmbedding, weather] = await Promise.all([
-    embed(userMessage),
-    fetchWeather(),
-  ]);
+  // Embed the user query
+  const queryEmbedding = await embed(userMessage);
 
   // Retrieve relevant chunks
   const hits = retrieve(queryEmbedding, 6);

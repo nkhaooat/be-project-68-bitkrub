@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
  */
 exports.chatWithBot = async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
+    const { message, history = [], weather = null } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'message is required' });
@@ -58,7 +58,7 @@ exports.chatWithBot = async (req, res) => {
       }
     }
 
-    const reply = await chat(message.trim(), history, userContext);
+    const reply = await chat(message.trim(), history, userContext, weather);
 
     res.json({ success: true, reply });
   } catch (err) {
