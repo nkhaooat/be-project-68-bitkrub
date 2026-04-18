@@ -223,27 +223,19 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const hits = retrieve(queryEmbedding, 12);
   const context = hits.map((h) => h.text).join('\n\n---\n\n');
 
-  // --- Shop-pinning: if a known shop is mentioned in recent history or message,
-  //     inject its full service list so the LLM always has the right IDs ---
+  // --- Shop-pinning: extract shopId from /shop/:id URLs in recent conversation history ---
+  //     This is 100% accurate — no fuzzy name matching needed.
   let shopPinBlock = '';
   try {
-    // Collect all shop names from vector store metadata
-    const allShopNames = [...new Set(hits.map(h => h.metadata?.shopName).filter(Boolean))];
-    // Also scan last 3 history messages for shop names
-    const recentText = (history.slice(-3).map(m => m.content).join(' ') + ' ' + userMessage).toLowerCase();
+    const recentText = history.slice(-6).map(m => m.content).join(' ') + ' ' + userMessage;
+    // Extract shopId from /shop/<id> or /booking?shop=<id> patterns in conversation
+    const shopIdMatch = recentText.match(/\/shop\/([a-f0-9]{24})/i)
+      || recentText.match(/[?&]shop=([a-f0-9]{24})/i);
     const MassageShop = require('./models/MassageShop');
     const MassageService = require('./models/MassageService');
-    // Find any shop whose name appears in the recent conversation
-    const allShops = await MassageShop.find({}, '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean();
-    // Find best (longest name) shop match to avoid short names shadowing longer ones
-    const mentionedShop = allShops
-      .filter(s => {
-        const nameLC = s.name.toLowerCase();
-        // Require at least 10 chars to match to avoid false positives
-        const matchLen = Math.min(nameLC.length, 40);
-        return recentText.includes(nameLC.slice(0, matchLen));
-      })
-      .sort((a, b) => b.name.length - a.name.length)[0]; // longest match wins
+    const mentionedShop = shopIdMatch
+      ? await MassageShop.findById(shopIdMatch[1], '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean()
+      : null;
     if (mentionedShop) {
       const svcs = await MassageService.find({ shop: mentionedShop._id }, '_id name duration price description').lean();
       const svcLines = svcs.map(s =>
