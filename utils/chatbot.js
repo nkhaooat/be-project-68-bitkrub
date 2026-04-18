@@ -104,8 +104,9 @@ async function buildVectorStore() {
         `Shop: ${shop.name}`,
         `Location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
         `Address: ${shop.address}`,
-        `Phone: ${shop.tel}`,
+        shop.tel ? `Phone: ${shop.tel}` : '',
         `Hours: ${shop.openTime} – ${shop.closeTime}`,
+        shop.hours && shop.hours.length ? `Weekly hours: ${shop.hours.join(" | ")}` : '',
         `Price range: ฿${shop.priceRangeMin} – ฿${shop.priceRangeMax}`,
         shop.rating ? `Rating: ${shop.rating}/5` : '',
         shop.map ? `Map: ${shop.map}` : '',
@@ -133,7 +134,7 @@ async function buildVectorStore() {
           `Price: ฿${svc.price}`,
           svc.sessions > 1 ? `Sessions: ${svc.sessions}` : '',
           svc.description ? `Description: ${svc.description}` : '',
-          `Shop location: ${shop.location}`,
+          `Shop location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
           `Book this service: /booking?shop=${shopId}&service=${svc._id}`,
         ]
           .filter(Boolean)
@@ -273,6 +274,19 @@ Current date and time (Bangkok, GMT+7): ${now}
 ${weatherBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
+AREA NAME MAPPING (Thai ↔ English):
+- อโศก / อโศก = Asoke
+- ข้าวสาร / ถนนข้าวสาร = Khao San
+- อ่อนนุช = On Nut
+- พร้อมพงษ์ = Phrom Phong
+- พระราม 9 / พระราม9 = Rama 9
+- รัชดา / รัชดาภิเษก = Ratchada
+- สยาม = Siam
+- สีลม = Silom
+- สุขุมวิท = Sukhumvit
+- ทองหล่อ = Thonglor
+When the user mentions a Thai area name, map it to the English searchArea name above before searching.
+
 You help users:
 - Find massage shops (by location, price, type, rating, hours)
 - Learn about services (type, duration, oil, price)
@@ -322,7 +336,7 @@ ${context}
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages,
-    max_tokens: 600,
+    max_tokens: 1200,
     temperature: 0.4,
   });
 
