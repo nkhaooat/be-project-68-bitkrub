@@ -223,24 +223,71 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const hits = retrieve(queryEmbedding, 12);
   const context = hits.map((h) => h.text).join('\n\n---\n\n');
 
-  // --- Shop-pinning: extract shopId from /shop/:id URLs in recent conversation history ---
-  //     This is 100% accurate — no fuzzy name matching needed.
+  // --- Shop-pinning: find the shop the user is currently talking about ---
+  //     Strategy 1: extract shopId from /shop/:id URL nearest to a shop name in current message
+  //     Strategy 2: if no URL match, fall back to longest name match in DB
   let shopPinBlock = '';
   try {
-    const recentText = history.slice(-6).map(m => m.content).join(' ') + ' ' + userMessage;
-    // Extract shopId from /shop/<id> or /booking?shop=<id> patterns in conversation
-    const shopIdMatch = recentText.match(/\/shop\/([a-f0-9]{24})/i)
-      || recentText.match(/[?&]shop=([a-f0-9]{24})/i);
     const MassageShop = require('./models/MassageShop');
     const MassageService = require('./models/MassageService');
-    const mentionedShop = shopIdMatch
-      ? await MassageShop.findById(shopIdMatch[1], '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean()
-      : null;
+    const recentMessages = history.slice(-8).map(m => m.content);
+    const recentText = recentMessages.join('\n') + '\n' + userMessage;
+
+    // Build a map of shopId -> shop name from all /shop/<id> links in history
+    const shopIdPattern = /\/shop\/([a-f0-9]{24})/gi;
+    const allShopIds = [...recentText.matchAll(shopIdPattern)].map(m => m[1]);
+    const uniqueShopIds = [...new Set(allShopIds)];
+
+    let mentionedShop = null;
+
+    if (uniqueShopIds.length === 1) {
+      // Only one shop mentioned — easy
+      mentionedShop = await MassageShop.findById(uniqueShopIds[0], '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean();
+    } else if (uniqueShopIds.length > 1) {
+      // Multiple shops — find which one the user is referring to in their current message
+      // Load all candidate shops, then pick the one whose name appears in the current user message
+      const candidates = await MassageShop.find(
+        { _id: { $in: uniqueShopIds } },
+        '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map'
+      ).lean();
+      const userMsgLC = userMessage.toLowerCase();
+      // Score each candidate by how much of its name appears in the user message
+      mentionedShop = candidates
+        .map(s => {
+          const words = s.name.toLowerCase().split(/\s+/);
+          const score = words.filter(w => w.length > 3 && userMsgLC.includes(w)).length;
+          return { shop: s, score };
+        })
+        .filter(x => x.score > 0)
+        .sort((a, b) => b.score - a.score)[0]?.shop
+        // If no keyword overlap, fall back to the last /shop/ URL in history (most recently discussed)
+        || candidates.find(s => s._id.toString() === allShopIds[allShopIds.length - 1]);
+    } else {
+      // No URLs in history — user specified shop by name before any links existed
+      // Fall back to longest name match
+      const allShops = await MassageShop.find({}, '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean();
+      const userMsgLC = userMessage.toLowerCase();
+      mentionedShop = allShops
+        .filter(s => {
+          const nameLC = s.name.toLowerCase();
+          const matchLen = Math.min(nameLC.length, 40);
+          return userMsgLC.includes(nameLC.slice(0, matchLen))
+            || recentText.toLowerCase().includes(nameLC.slice(0, matchLen));
+        })
+        .sort((a, b) => b.name.length - a.name.length)[0];
+    }
     if (mentionedShop) {
       const svcs = await MassageService.find({ shop: mentionedShop._id }, '_id name duration price description').lean();
       const svcLines = svcs.map(s =>
         `  - [serviceId:${s._id}] ${s.name} | ${s.duration} min | ฿${s.price}${s.description ? ' | ' + s.description : ''}`
       ).join('\n');
+
+      // Also extract serviceId from ?service=<id> URLs if present in recent conversation
+      const serviceIdMatch = recentText.match(/[?&]service=([a-f0-9]{24})/i);
+      const pinnedServiceNote = serviceIdMatch
+        ? `\n\nIMPORTANT: The user is specifically asking about serviceId ${serviceIdMatch[1]} — use ONLY this service ID for booking.`
+        : '';
+
       shopPinBlock = `
 --- PINNED SHOP (user is asking about this specific shop) ---
 Shop: ${mentionedShop.name}
@@ -252,7 +299,7 @@ Rating: ${mentionedShop.rating}/5
 Map: ${mentionedShop.map || ''}
 Booking page: /shop/${mentionedShop._id}
 Services (use ONLY these IDs for this shop):
-${svcLines}
+${svcLines}${pinnedServiceNote}
 --- END PINNED SHOP ---`;
     }
   } catch (e) {
