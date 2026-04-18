@@ -278,7 +278,7 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
     if (mentionedShop) {
       const svcs = await MassageService.find({ shop: mentionedShop._id }, '_id name duration price description').lean();
       const svcLines = svcs.map(s =>
-        `  - [serviceId:${s._id}] ${s.name} | ${s.duration} min | ฿${s.price}${s.description ? ' | ' + s.description : ''}`
+        `  - [serviceId:${s._id}] ${s.name} | ${s.duration} min | ฿${s.price}${s.description ? ' | ' + s.description : ''} | Book: /booking?shop=${mentionedShop._id}&service=${s._id}`
       ).join('\n');
 
       // Also extract serviceId from ?service=<id> URLs if present in recent conversation
@@ -385,6 +385,7 @@ Rules:
 - If canEdit/cancel is true, proceed with the action
 - If the user has 3 active reservations, tell them they must cancel one before booking again
 - Always use relative paths for internal links (e.g. /booking?shop=ID&service=ID, /shop/ID, /mybookings) — NEVER prefix them with any domain name
+- CRITICAL: When discussing a specific shop, ALWAYS include its booking link (/shop/<shopId>) in your response. This ensures the shop can be correctly identified in follow-up messages.
 - If TikTok links are available and the user asks for them, list them clearly
 - If you don't know something, say so honestly — don't make up shop names or prices
 - Keep answers concise and friendly. Respond in the same language the user uses (Thai or English)
