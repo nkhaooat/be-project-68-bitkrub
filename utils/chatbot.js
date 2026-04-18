@@ -233,7 +233,7 @@ They can book up to 3 services (3 slots remaining).
 --- END ---`;
     } else {
       const resvList = userContext.reservations
-        .map((r, i) => `  ${i + 1}. ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}]`)
+        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}]`)
         .join('\n');
       reservationBlock = `
 --- USER RESERVATION STATUS ---
@@ -299,6 +299,15 @@ Use the shopId and serviceId from the retrieved context above.
 For the resvDate, use today's date with the requested time in ISO 8601 format with Bangkok timezone offset (+07:00).
 Only emit [[BOOK:...]] when the user has explicitly confirmed (said yes/ใช่/ยืนยัน/confirm/ok/โอเค etc.) AND you have both shopId and serviceId available.
 Never make up IDs — only use IDs from the retrieved context.
+
+CANCEL ACTION:
+When the user confirms they want to cancel a specific reservation,
+respond with ONLY this exact JSON on its own line:
+[[CANCEL:{"reservationId":"RESERVATION_ID"}]]
+Then on the next line, add a friendly message saying the cancellation is being processed.
+Use the reservation ID from the USER RESERVATION STATUS block (shown as [ID:...] in the booking list).
+Only emit [[CANCEL:...]] when the user has explicitly confirmed cancellation AND you have the reservation ID.
+Remind the user they can only cancel at least 1 day before the reservation date.
 ${reservationBlock}
 --- RETRIEVED CONTEXT ---
 ${context}

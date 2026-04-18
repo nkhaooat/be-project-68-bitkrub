@@ -40,6 +40,7 @@ exports.chatWithBot = async (req, res) => {
           activeCount: activeReservations.length,
           slotsRemaining: 3 - activeReservations.length,
           reservations: activeReservations.map(r => ({
+            id: r._id.toString(),
             shop: r.shop?.name || 'Unknown shop',
             service: r.service?.name || 'Unknown service',
             duration: r.service?.duration,
@@ -49,6 +50,7 @@ exports.chatWithBot = async (req, res) => {
               dateStyle: 'medium',
               timeStyle: 'short'
             }),
+            resvDate: r.resvDate,
             status: r.status
           }))
         };
@@ -60,8 +62,9 @@ exports.chatWithBot = async (req, res) => {
 
     const reply = await chat(message.trim(), history, userContext, weather);
 
-    // Parse booking action if present
+    // Parse booking/cancel action if present
     const bookMatch = reply.match(/\[\[BOOK:(\{[^\]]+\})\]\]/);
+    const cancelMatch = reply.match(/\[\[CANCEL:(\{[^\]]+\})\]\]/);
     let action = null;
     let cleanReply = reply;
     if (bookMatch) {
@@ -70,6 +73,13 @@ exports.chatWithBot = async (req, res) => {
         cleanReply = reply.replace(/\[\[BOOK:\{[^\]]+\}\]\]\n?/, '').trim();
       } catch {
         // malformed action — just send reply as-is
+      }
+    } else if (cancelMatch) {
+      try {
+        action = { type: 'cancel_reservation', ...JSON.parse(cancelMatch[1]) };
+        cleanReply = reply.replace(/\[\[CANCEL:\{[^\]]+\}\]\]\n?/, '').trim();
+      } catch {
+        // malformed action
       }
     }
 
