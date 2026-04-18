@@ -317,7 +317,7 @@ They can book up to 3 services (3 slots remaining).
 --- END ---`;
     } else {
       const resvList = userContext.reservations
-        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [ISO:${r.resvDate}] [${r.status}]`)
+        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}] [${r.hoursUntil}h until reservation] [canEdit/cancel: ${r.canModify}]`)
         .join('\n');
       reservationBlock = `
 --- USER RESERVATION STATUS ---
@@ -371,9 +371,10 @@ You help users:
 
 Rules:
 - Users can have at most 3 active (pending/confirmed) reservations at a time
-- Users can cancel pending or confirmed reservations. The backend enforces the 1-day cutoff rule.
-- Do NOT try to calculate whether cancellation is allowed yourself — always attempt [[CANCEL:...]] and let the API respond. If the backend rejects it, the error will be shown to the user automatically.
-- If the user asks to cancel, confirm which reservation they mean, then emit [[CANCEL:...]] immediately upon their confirmation.
+- Users can cancel or edit pending/confirmed reservations at least 1 day (>24 hours) before the reservation date
+- The server has already computed [canEdit/cancel: true/false] and [Xh until reservation] for each booking — use these values directly, do NOT recalculate yourself
+- If canEdit/cancel is false, tell the user they cannot cancel/edit and the cutoff has passed
+- If canEdit/cancel is true, proceed with the action
 - If the user has 3 active reservations, tell them they must cancel one before booking again
 - Always use relative paths for internal links (e.g. /booking?shop=ID&service=ID, /shop/ID, /mybookings) — NEVER prefix them with any domain name
 - If TikTok links are available and the user asks for them, list them clearly
@@ -408,7 +409,7 @@ IMPORTANT: Bangkok is GMT+7. Examples:
 - "8:30 AM" on April 20, 2026 → "2026-04-20T08:30:00+07:00"
 - "noon" on April 25, 2026 → "2026-04-25T12:00:00+07:00"
 Only emit [[EDIT:...]] when the user has explicitly confirmed the new time AND you have the reservation ID.
-Same 1-day rule applies: can only edit if more than 24 hours before the original reservation date.
+Same 1-day rule applies: only emit [[EDIT:...]] if [canEdit/cancel: true] for that reservation.
 
 CANCEL ACTION:
 When the user confirms they want to cancel a specific reservation,

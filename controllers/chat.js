@@ -39,20 +39,27 @@ exports.chatWithBot = async (req, res) => {
         userContext = {
           activeCount: activeReservations.length,
           slotsRemaining: 3 - activeReservations.length,
-          reservations: activeReservations.map(r => ({
-            id: r._id.toString(),
-            shop: r.shop?.name || 'Unknown shop',
-            service: r.service?.name || 'Unknown service',
-            duration: r.service?.duration,
-            price: r.service?.price,
-            date: new Date(r.resvDate).toLocaleString('en-US', {
-              timeZone: 'Asia/Bangkok',
-              dateStyle: 'medium',
-              timeStyle: 'short'
-            }),
-            resvDate: r.resvDate,
-            status: r.status
-          }))
+          reservations: activeReservations.map(r => {
+            const resvDate = new Date(r.resvDate);
+            const hoursUntil = (resvDate - new Date()) / (1000 * 60 * 60);
+            const canModify = hoursUntil > 24;
+            return {
+              id: r._id.toString(),
+              shop: r.shop?.name || 'Unknown shop',
+              service: r.service?.name || 'Unknown service',
+              duration: r.service?.duration,
+              price: r.service?.price,
+              date: new Date(r.resvDate).toLocaleString('en-US', {
+                timeZone: 'Asia/Bangkok',
+                dateStyle: 'medium',
+                timeStyle: 'short'
+              }),
+              resvDate: r.resvDate,
+              hoursUntil: Math.round(hoursUntil * 10) / 10,
+              canModify,
+              status: r.status
+            };
+          })
         };
       } catch (err) {
         // Invalid/expired token — just treat as guest, don't error
