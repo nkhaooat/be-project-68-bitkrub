@@ -220,8 +220,44 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const queryEmbedding = await embed(userMessage);
 
   // Retrieve relevant chunks
-  const hits = retrieve(queryEmbedding, 6);
+  const hits = retrieve(queryEmbedding, 12);
   const context = hits.map((h) => h.text).join('\n\n---\n\n');
+
+  // --- Shop-pinning: if a known shop is mentioned in recent history or message,
+  //     inject its full service list so the LLM always has the right IDs ---
+  let shopPinBlock = '';
+  try {
+    // Collect all shop names from vector store metadata
+    const allShopNames = [...new Set(hits.map(h => h.metadata?.shopName).filter(Boolean))];
+    // Also scan last 3 history messages for shop names
+    const recentText = (history.slice(-3).map(m => m.content).join(' ') + ' ' + userMessage).toLowerCase();
+    const MassageShop = require('./models/MassageShop');
+    const MassageService = require('./models/MassageService');
+    // Find any shop whose name appears in the recent conversation
+    const allShops = await MassageShop.find({}, '_id name searchArea openTime closeTime priceRangeMin priceRangeMax rating map').lean();
+    const mentionedShop = allShops.find(s => recentText.includes(s.name.toLowerCase().slice(0, 20)));
+    if (mentionedShop) {
+      const svcs = await MassageService.find({ shop: mentionedShop._id }, '_id name duration price description').lean();
+      const svcLines = svcs.map(s =>
+        `  - [serviceId:${s._id}] ${s.name} | ${s.duration} min | ฿${s.price}${s.description ? ' | ' + s.description : ''}`
+      ).join('\n');
+      shopPinBlock = `
+--- PINNED SHOP (user is asking about this specific shop) ---
+Shop: ${mentionedShop.name}
+shopId: ${mentionedShop._id}
+Area: ${mentionedShop.searchArea || 'Bangkok'}
+Hours: ${mentionedShop.openTime} – ${mentionedShop.closeTime}
+Price range: ฿${mentionedShop.priceRangeMin} – ฿${mentionedShop.priceRangeMax}
+Rating: ${mentionedShop.rating}/5
+Map: ${mentionedShop.map || ''}
+Booking page: /shop/${mentionedShop._id}
+Services (use ONLY these IDs for this shop):
+${svcLines}
+--- END PINNED SHOP ---`;
+    }
+  } catch (e) {
+    // non-fatal
+  }
 
   // Build user reservation context block
   let reservationBlock = '';
@@ -274,18 +310,6 @@ Current date and time (Bangkok, GMT+7): ${now}
 ${weatherBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
-AREA NAME MAPPING (Thai ↔ English):
-- อโศก / อโศก = Asoke
-- ข้าวสาร / ถนนข้าวสาร = Khao San
-- อ่อนนุช = On Nut
-- พร้อมพงษ์ = Phrom Phong
-- พระราม 9 / พระราม9 = Rama 9
-- รัชดา / รัชดาภิเษก = Ratchada
-- สยาม = Siam
-- สีลม = Silom
-- สุขุมวิท = Sukhumvit
-- ทองหล่อ = Thonglor
-When the user mentions a Thai area name, map it to the English searchArea name above before searching.
 
 You help users:
 - Find massage shops (by location, price, type, rating, hours)
@@ -322,6 +346,13 @@ Then on the next line, add a friendly message saying the cancellation is being p
 Use the reservation ID from the USER RESERVATION STATUS block (shown as [ID:...] in the booking list).
 Only emit [[CANCEL:...]] when the user has explicitly confirmed cancellation AND you have the reservation ID.
 Remind the user they can only cancel at least 1 day before the reservation date.
+CRITICAL - SHOP ID ACCURACY:
+When the user is discussing a specific shop (by name), you MUST only use shopId and serviceId values
+from chunks that explicitly contain that exact shop name.
+NEVER use IDs from a different shop even if the service name matches.
+If the retrieved context does not contain the correct shop's data, say you need more info — do NOT guess IDs.
+If you are about to emit [[BOOK:...]], double-check: does the shopId in your context match the shop the user named?
+${shopPinBlock}
 ${reservationBlock}
 --- RETRIEVED CONTEXT ---
 ${context}
