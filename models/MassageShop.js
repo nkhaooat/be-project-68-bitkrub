@@ -76,6 +76,10 @@ const MassageShopSchema = new mongoose.Schema({
     descriptionTh: {
         type: String,
         default: null
+    },
+    searchAreaTh: {
+        type: String,
+        default: null
     }
 }, {
     toJSON: { virtuals: true },

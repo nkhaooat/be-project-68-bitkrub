@@ -62,7 +62,7 @@ async function embed(input) {
  */
 async function ensureThaiTranslation(shop, shopServices) {
   // Check if shop already has Thai cached
-  const shopHasThai = shop.nameTh && shop.locationTh;
+  const shopHasThai = shop.nameTh && shop.locationTh && shop.searchAreaTh;
   const servicesHaveThai = shopServices.every(s => s.nameTh && s.areaTh);
 
   if (shopHasThai && servicesHaveThai) {
@@ -71,6 +71,7 @@ async function ensureThaiTranslation(shop, shopServices) {
       shopNameTh: shop.nameTh,
       locationTh: shop.locationTh,
       descriptionTh: shop.descriptionTh,
+      searchAreaTh: shop.searchAreaTh,
       services: shopServices.map(s => ({
         nameTh: s.nameTh,
         areaTh: s.areaTh,
@@ -89,6 +90,7 @@ async function ensureThaiTranslation(shop, shopServices) {
 
 Shop name: "${shop.name}"
 Location/area: "${shop.location}${shop.searchArea ? ' / ' + shop.searchArea : ''}"
+Search area (neighborhood name only): "${shop.searchArea || ''}"
 Description: "${shop.description || ''}"
 Services:
 ${serviceItems}
@@ -97,11 +99,14 @@ Reply format:
 {
   "shopNameTh": "...",
   "locationTh": "...",
+  "searchAreaTh": "...",
   "descriptionTh": "...",
   "services": [
     { "nameTh": "...", "areaTh": "...", "descTh": "..." }
   ]
-}`;
+}
+
+For searchAreaTh: translate the neighborhood name to Thai, include common aliases (e.g. Khao San → ข้าวสาร, ถนนข้าวสาร, เขาสาน; Sukhumvit → สุขุมวิท; Silom → สีลม) separated by commas.`;
 
     const resp = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -115,7 +120,7 @@ Reply format:
     // Persist to MongoDB so next rebuild skips GPT
     await MassageShop.updateOne(
       { _id: shop._id },
-      { $set: { nameTh: thai.shopNameTh, locationTh: thai.locationTh, descriptionTh: thai.descriptionTh } }
+      { $set: { nameTh: thai.shopNameTh, locationTh: thai.locationTh, descriptionTh: thai.descriptionTh, searchAreaTh: thai.searchAreaTh } }
     );
     for (let i = 0; i < shopServices.length; i++) {
       const svcThai = thai.services?.[i];
@@ -193,6 +198,8 @@ async function buildVectorStore() {
         thai ? `ร้าน: ${thai.shopNameTh}` : '',
         `Location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
         thai ? `สถานที่: ${thai.locationTh}` : '',
+        shop.searchArea ? `Area: ${shop.searchArea}` : '',
+        thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
         `Address: ${shop.address}`,
         shop.tel ? `Phone: ${shop.tel}` : '',
         `Hours: ${shop.openTime} – ${shop.closeTime}`,
@@ -237,6 +244,7 @@ async function buildVectorStore() {
           svcThai && svcThai.descTh ? `รายละเอียด: ${svcThai.descTh}` : '',
           `Shop location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
           thai ? `สาขา: ${thai.locationTh}` : '',
+          thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
           `Book this service: /booking?shop=${shopId}&service=${svc._id}`,
         ]
           .filter(Boolean)
