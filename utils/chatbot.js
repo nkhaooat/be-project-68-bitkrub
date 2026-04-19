@@ -55,11 +55,31 @@ async function embed(input) {
 // ---------------------------------------------------------------------------
 
 /**
- * Translate shop + service names/areas/descriptions to Thai in one GPT call.
- * Returns { shopNameTh, locationTh, descriptionTh, services: [{ nameTh, areaTh, descTh }] }
- * Falls back gracefully if GPT call fails.
+ * Ensure Thai translations exist for a shop + its services.
+ * - If all Thai fields are already in DB → use them (no GPT call).
+ * - If any are missing → call GPT once for the whole shop, then persist to DB.
+ * Returns { shopNameTh, locationTh, descriptionTh, services: [{ nameTh, areaTh, descTh }] } or null.
  */
-async function translateShopToThai(shop, shopServices) {
+async function ensureThaiTranslation(shop, shopServices) {
+  // Check if shop already has Thai cached
+  const shopHasThai = shop.nameTh && shop.locationTh;
+  const servicesHaveThai = shopServices.every(s => s.nameTh && s.areaTh);
+
+  if (shopHasThai && servicesHaveThai) {
+    // All cached — return from DB directly
+    return {
+      shopNameTh: shop.nameTh,
+      locationTh: shop.locationTh,
+      descriptionTh: shop.descriptionTh,
+      services: shopServices.map(s => ({
+        nameTh: s.nameTh,
+        areaTh: s.areaTh,
+        descTh: s.descriptionTh,
+      })),
+    };
+  }
+
+  // Need to translate — call GPT once for the whole shop
   try {
     const serviceItems = shopServices.map((s, i) =>
       `service${i}: name="${s.name}", area="${s.area}"${s.description ? `, description="${s.description}"` : ''}`
@@ -90,7 +110,25 @@ Reply format:
       response_format: { type: 'json_object' },
     });
 
-    return JSON.parse(resp.choices[0].message.content);
+    const thai = JSON.parse(resp.choices[0].message.content);
+
+    // Persist to MongoDB so next rebuild skips GPT
+    await MassageShop.updateOne(
+      { _id: shop._id },
+      { $set: { nameTh: thai.shopNameTh, locationTh: thai.locationTh, descriptionTh: thai.descriptionTh } }
+    );
+    for (let i = 0; i < shopServices.length; i++) {
+      const svcThai = thai.services?.[i];
+      if (svcThai) {
+        await MassageService.updateOne(
+          { _id: shopServices[i]._id },
+          { $set: { nameTh: svcThai.nameTh, areaTh: svcThai.areaTh, descriptionTh: svcThai.descTh } }
+        );
+      }
+    }
+
+    console.log(`[chatbot] Translated & cached Thai for: ${shop.name}`);
+    return thai;
   } catch (e) {
     console.warn(`[chatbot] Thai translation failed for ${shop.name}:`, e.message);
     return null;
@@ -146,8 +184,8 @@ async function buildVectorStore() {
         (shop.rating ? ` Rated ${shop.rating}/5.` : '') +
         (hasTiktok ? ' Has TikTok content available.' : '');
 
-      // --- Translate to Thai (one GPT call per shop) ---
-      const thai = await translateShopToThai(shop, shopServices);
+      // --- Get Thai translations (from DB cache or GPT if missing) ---
+      const thai = await ensureThaiTranslation(shop, shopServices);
 
       // --- Shop summary chunk (English + Thai) ---
       const shopText = [

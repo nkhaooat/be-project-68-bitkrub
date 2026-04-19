@@ -34,6 +34,19 @@ const MassageServiceSchema = new mongoose.Schema({
     description:{
         type: String
     },
+    // Thai translations (cached from GPT, used by chatbot vector store)
+    nameTh: {
+        type: String,
+        default: null
+    },
+    areaTh: {
+        type: String,
+        default: null
+    },
+    descriptionTh: {
+        type: String,
+        default: null
+    },
     shop:{
         type: mongoose.Schema.ObjectId,
         ref: 'MassageShop',

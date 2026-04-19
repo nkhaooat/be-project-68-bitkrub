@@ -63,6 +63,19 @@ const MassageShopSchema = new mongoose.Schema({
     tiktokLinks: {
         type: [String],
         default: []
+    },
+    // Thai translations (cached from GPT, used by chatbot vector store)
+    nameTh: {
+        type: String,
+        default: null
+    },
+    locationTh: {
+        type: String,
+        default: null
+    },
+    descriptionTh: {
+        type: String,
+        default: null
     }
 }, {
     toJSON: { virtuals: true },
