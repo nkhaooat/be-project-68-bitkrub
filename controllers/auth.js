@@ -165,7 +165,7 @@ exports.forgotPassword = async (req, res, next) => {
           <tr>
             <td style="background-color:#2C1E18;padding:32px 40px;text-align:center;border-bottom:2px solid #E57A00;">
               <h1 style="margin:0;font-size:28px;font-weight:800;color:#E57A00;letter-spacing:1px;">⚔️ DUNGEON INN</h1>
-              <p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Adventurer Portal</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Massage Reservation</p>
             </td>
           </tr>
 
@@ -214,7 +214,7 @@ exports.forgotPassword = async (req, res, next) => {
           <tr>
             <td style="background-color:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;">
               <p style="margin:0;font-size:12px;color:#5A544E;">
-                © 2025 Dungeon Inn. All rights reserved. &nbsp;|&nbsp;
+                © 2026 Dungeon Inn. All rights reserved. &nbsp;|&nbsp;
                 <span style="color:#E57A00;">Happy adventuring!</span>
               </p>
             </td>
