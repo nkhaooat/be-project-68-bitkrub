@@ -127,16 +127,20 @@ exports.forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
 
     // Send email via Brevo
     const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
 
+    // Use a verified sender or Brevo default if FROM_EMAIL is not verified
+    const senderEmail = process.env.BREVO_FROM_EMAIL || 'noreply@example.com';
+    const senderName = process.env.BREVO_FROM_NAME || 'Dungeon Inn';
+
     await brevo.transactionalEmails.sendTransacEmail({
       to: [{ email: user.email, name: user.name }],
       sender: {
-        email: process.env.BREVO_FROM_EMAIL,
-        name: process.env.BREVO_FROM_NAME
+        email: senderEmail,
+        name: senderName
       },
       subject: '🔑 Reset Your Dungeon Inn Password',
       htmlContent: `
@@ -226,8 +230,8 @@ exports.forgotPassword = async (req, res, next) => {
       message: 'If that email exists, a reset link has been sent.'
     });
   } catch (err) {
-    console.error('forgotPassword error:', err);
-    res.status(500).json({ success: false, message: 'Email could not be sent' });
+    console.error('forgotPassword error:', err?.response?.data || err?.message || err);
+    res.status(500).json({ success: false, message: 'Email could not be sent', detail: err?.message });
   }
 };
 
