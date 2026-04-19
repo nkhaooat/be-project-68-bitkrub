@@ -89,8 +89,8 @@ async function ensureThaiTranslation(shop, shopServices) {
     const prompt = `Translate the following massage shop info to Thai. Reply ONLY with valid JSON, no explanation.
 
 Shop name: "${shop.name}"
-Location/area: "${shop.location}${shop.searchArea ? ' / ' + shop.searchArea : ''}"
-Search area (neighborhood name only): "${shop.searchArea || ''}"
+Address (translate to Thai): "${shop.address}"
+Search area: "${shop.searchArea || ''}"
 Description: "${shop.description || ''}"
 Services:
 ${serviceItems}
@@ -106,7 +106,8 @@ Reply format:
   ]
 }
 
-For searchAreaTh: translate the neighborhood name to Thai, include common aliases (e.g. Khao San → ข้าวสาร, ถนนข้าวสาร, เขาสาน; Sukhumvit → สุขุมวิท; Silom → สีลม) separated by commas.`;
+For locationTh: translate the address to Thai (street name, district, subdistrict).
+For searchAreaTh: translate the neighborhood name with common Thai aliases separated by commas (e.g. Khao San → ข้าวสาร, ถนนข้าวสาร; Sukhumvit → สุขุมวิท, ถนนสุขุมวิท; Silom → สีลม, ถนนสีลม, พัฒน์พงศ์).`;
 
     const resp = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -197,7 +198,7 @@ async function buildVectorStore() {
         `Shop: ${shop.name}`,
         thai ? `ร้าน: ${thai.shopNameTh}` : '',
         `Location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
-        thai ? `สถานที่: ${thai.locationTh}` : '',
+        thai && thai.locationTh ? `ที่อยู่: ${thai.locationTh}` : '',
         shop.searchArea ? `Area: ${shop.searchArea}` : '',
         thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
         `Address: ${shop.address}`,
@@ -243,7 +244,7 @@ async function buildVectorStore() {
           svc.description ? `Description: ${svc.description}` : '',
           svcThai && svcThai.descTh ? `รายละเอียด: ${svcThai.descTh}` : '',
           `Shop location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
-          thai ? `สาขา: ${thai.locationTh}` : '',
+          thai && thai.locationTh ? `ที่อยู่ร้าน: ${thai.locationTh}` : '',
           thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
           `Book this service: /booking?shop=${shopId}&service=${svc._id}`,
         ]
