@@ -123,9 +123,14 @@ exports.forgotPassword = async (req, res, next) => {
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
-    await user.save({ validateBeforeSave: false });
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const tokenExpire = Date.now() + 15 * 60 * 1000;
+
+    // Use updateOne to avoid triggering pre-save password hash hook
+    await User.updateOne({ _id: user._id }, {
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: tokenExpire
+    });
 
     const resetUrl = `${process.env.FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
 
@@ -230,9 +235,10 @@ exports.forgotPassword = async (req, res, next) => {
 
     if (brevoError) {
       // Clean up token so it's not orphaned
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpire = undefined;
-      await user.save({ validateBeforeSave: false });
+      await User.updateOne({ _id: user._id }, {
+        resetPasswordToken: undefined,
+        resetPasswordExpire: undefined
+      });
       return res.status(500).json({
         success: false,
         message: 'Email could not be sent',
