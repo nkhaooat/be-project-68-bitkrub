@@ -3,7 +3,7 @@
 // ─── Mock Models ─────────────────────────────────────────────────────────────
 jest.mock('../models/MassageShop');
 const MassageShop = require('../models/MassageShop');
-const { addTiktokLinks } = require('../controllers/shops');
+const { addTiktokLinks } = require('../utils/addTiktokLinks');
 
 function mockRes() {
   const res = {};

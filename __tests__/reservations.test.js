@@ -8,7 +8,7 @@ jest.mock('../models/MassageService');
 const Reservation   = require('../models/Reservation');
 const MassageShop   = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
-const { createReservation } = require('../controllers/reservations');
+const { createReservation } = require('../utils/createReservation');
 
 // Helper to build mock req/res
 function mockRes() {

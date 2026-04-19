@@ -19,6 +19,19 @@
     "dev": "nodemon server.js",
     "test": "jest --coverage"
   },
+  "jest": {
+    "collectCoverageFrom": [
+      "utils/createReservation.js",
+      "utils/addTiktokLinks.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    }
+  },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.4",
     "bcryptjs": "^3.0.3",
