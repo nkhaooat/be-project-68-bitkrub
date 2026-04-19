@@ -50,6 +50,53 @@ async function embed(input) {
   return isArray ? vecs : vecs[0];
 }
 
+// ---------------------------------------------------------------------------
+// Thai translation helper (batch per shop for efficiency)
+// ---------------------------------------------------------------------------
+
+/**
+ * Translate shop + service names/areas/descriptions to Thai in one GPT call.
+ * Returns { shopNameTh, locationTh, descriptionTh, services: [{ nameTh, areaTh, descTh }] }
+ * Falls back gracefully if GPT call fails.
+ */
+async function translateShopToThai(shop, shopServices) {
+  try {
+    const serviceItems = shopServices.map((s, i) =>
+      `service${i}: name="${s.name}", area="${s.area}"${s.description ? `, description="${s.description}"` : ''}`
+    ).join('\n');
+
+    const prompt = `Translate the following massage shop info to Thai. Reply ONLY with valid JSON, no explanation.
+
+Shop name: "${shop.name}"
+Location/area: "${shop.location}${shop.searchArea ? ' / ' + shop.searchArea : ''}"
+Description: "${shop.description || ''}"
+Services:
+${serviceItems}
+
+Reply format:
+{
+  "shopNameTh": "...",
+  "locationTh": "...",
+  "descriptionTh": "...",
+  "services": [
+    { "nameTh": "...", "areaTh": "...", "descTh": "..." }
+  ]
+}`;
+
+    const resp = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+      response_format: { type: 'json_object' },
+    });
+
+    return JSON.parse(resp.choices[0].message.content);
+  } catch (e) {
+    console.warn(`[chatbot] Thai translation failed for ${shop.name}:`, e.message);
+    return null;
+  }
+}
+
 /** Split a long text into overlapping chunks */
 function chunkText(text, maxWords = 120, overlapWords = 20) {
   const words = text.split(/\s+/);
@@ -99,18 +146,27 @@ async function buildVectorStore() {
         (shop.rating ? ` Rated ${shop.rating}/5.` : '') +
         (hasTiktok ? ' Has TikTok content available.' : '');
 
-      // --- Shop summary chunk ---
+      // --- Translate to Thai (one GPT call per shop) ---
+      const thai = await translateShopToThai(shop, shopServices);
+
+      // --- Shop summary chunk (English + Thai) ---
       const shopText = [
         `Shop: ${shop.name}`,
+        thai ? `ร้าน: ${thai.shopNameTh}` : '',
         `Location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
+        thai ? `สถานที่: ${thai.locationTh}` : '',
         `Address: ${shop.address}`,
         shop.tel ? `Phone: ${shop.tel}` : '',
         `Hours: ${shop.openTime} – ${shop.closeTime}`,
+        `เวลาทำการ: ${shop.openTime} – ${shop.closeTime}`,
         shop.hours && shop.hours.length ? `Weekly hours: ${shop.hours.join(" | ")}` : '',
         `Price range: ฿${shop.priceRangeMin} – ฿${shop.priceRangeMax}`,
+        `ช่วงราคา: ฿${shop.priceRangeMin} – ฿${shop.priceRangeMax}`,
         shop.rating ? `Rating: ${shop.rating}/5` : '',
+        shop.rating ? `คะแนน: ${shop.rating}/5` : '',
         shop.map ? `Map: ${shop.map}` : '',
         `Description: ${description}`,
+        thai && thai.descriptionTh ? `รายละเอียด: ${thai.descriptionTh}` : '',
         hasTiktok
           ? `TikTok videos: ${tiktokLinks.join(', ')}`
           : 'No TikTok videos available for this shop.',
@@ -124,17 +180,25 @@ async function buildVectorStore() {
         metadata: { type: 'shop', shopId, shopName: shop.name, tiktokLinks },
       });
 
-      // --- Per-service chunks ---
-      for (const svc of shopServices) {
+      // --- Per-service chunks (English + Thai) ---
+      for (let si = 0; si < shopServices.length; si++) {
+        const svc = shopServices[si];
+        const svcThai = thai && thai.services && thai.services[si];
         const svcText = [
           `Service: ${svc.name} at ${shop.name}`,
+          svcThai ? `บริการ: ${svcThai.nameTh} ที่ ${thai.shopNameTh}` : '',
           `Area: ${svc.area}`,
+          svcThai ? `ประเภท: ${svcThai.areaTh}` : '',
           `Duration: ${svc.duration} minutes`,
+          `ระยะเวลา: ${svc.duration} นาที`,
           `Oil: ${svc.oil}`,
           `Price: ฿${svc.price}`,
+          `ราคา: ฿${svc.price}`,
           svc.sessions > 1 ? `Sessions: ${svc.sessions}` : '',
           svc.description ? `Description: ${svc.description}` : '',
+          svcThai && svcThai.descTh ? `รายละเอียด: ${svcThai.descTh}` : '',
           `Shop location: ${shop.location}${shop.searchArea ? " (" + shop.searchArea + ")" : ""}`,
+          thai ? `สาขา: ${thai.locationTh}` : '',
           `Book this service: /booking?shop=${shopId}&service=${svc._id}`,
         ]
           .filter(Boolean)
@@ -156,10 +220,11 @@ async function buildVectorStore() {
       if (tiktokLinks.length) {
         const ttText = [
           `TikTok content for ${shop.name}:`,
+          thai ? `คลิป TikTok ของ ${thai.shopNameTh}:` : '',
           ...tiktokLinks.map((url, i) => `  Video ${i + 1}: ${url}`),
           `Shop location: ${shop.location}`,
           `Address: ${shop.address}`,
-        ].join('\n');
+        ].filter(Boolean).join('\n');
 
         docs.push({
           text: ttText,
@@ -368,7 +433,6 @@ Current UTC timestamp (for precise date math): ${nowISO}
 ${weatherBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
-
 You help users:
 - Find massage shops (by location, price, type, rating, hours)
 - Learn about services (type, duration, oil, price)
@@ -376,6 +440,9 @@ You help users:
 - Navigate to booking pages
 - Know if a shop is currently open based on the current time above
 - Check their own reservation status and remaining booking slots
+
+Language: Respond in the same language the user uses (Thai or English).
+The knowledge base contains both English and Thai text — use whichever matches the user's query.
 
 Rules:
 - Users can have at most 3 active (pending/confirmed) reservations at a time
