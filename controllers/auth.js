@@ -279,7 +279,12 @@ exports.resetPassword = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
     }
 
-    // Set new password
+    // Set new password — save() triggers bcrypt pre-save hook
+    // Clear token fields atomically BEFORE saving so the link is dead immediately
+    await User.updateOne({ _id: user._id }, {
+      $unset: { resetPasswordToken: '', resetPasswordExpire: '' }
+    });
+
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
