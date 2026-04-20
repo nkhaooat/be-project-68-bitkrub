@@ -56,10 +56,11 @@ exports.getShops = async (req, res, next) => {
 
         const pages = Math.ceil(total / limit);
 
-        // Add photo proxy URL for frontend fallback usage
+        // Add photo proxy URL for frontend fallback usage (absolute so Vercel FE points to this backend)
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
         const data = shops.map(s => ({
             ...s,
-            photoProxy: `/api/v1/shops/${s._id}/photo?fallback=1`
+            photoProxy: `${baseUrl}/api/v1/shops/${s._id}/photo?fallback=1`
         }));
 
         res.status(200).json({
@@ -103,7 +104,8 @@ exports.getShop = async (req, res, next) => {
         if (!shop) {
             return res.status(404).json({ success: false, message: `Shop not found with id of ${req.params.id}` });
         }
-        shop.photoProxy = `/api/v1/shops/${shop._id}/photo?fallback=1`;
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        shop.photoProxy = `${baseUrl}/api/v1/shops/${shop._id}/photo?fallback=1`;
         res.status(200).json({ success: true, data: shop });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
