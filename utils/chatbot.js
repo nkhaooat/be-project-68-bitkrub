@@ -43,12 +43,26 @@ function cosineSimilarity(a, b) {
 /** Embed a single string (or batch of strings) */
 async function embed(input) {
   const isArray = Array.isArray(input);
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: isArray ? input : [input],
-  });
-  const vecs = response.data.map((d) => d.embedding);
-  return isArray ? vecs : vecs[0];
+  try {
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: isArray ? input : [input],
+    });
+    const vecs = response.data.map((d) => d.embedding);
+    return isArray ? vecs : vecs[0];
+  } catch (err) {
+    // Graceful error with clear message for quota/billing issues
+    if (err.status === 429 || err.code === 'insufficient_quota') {
+      console.error('[chatbot] OpenAI API quota exceeded. Check billing at https://platform.openai.com/account/billing');
+      throw new Error('Embedding failed: OpenAI API quota exceeded. Please check your billing settings.');
+    }
+    if (err.status === 401 || err.code === 'invalid_api_key') {
+      console.error('[chatbot] Invalid OpenAI API key. Check OPENAI_API_KEY environment variable.');
+      throw new Error('Embedding failed: Invalid API key. Please verify your OPENAI_API_KEY.');
+    }
+    console.error('[chatbot] Embedding error:', err.message);
+    throw new Error(`Embedding failed: ${err.message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -341,17 +355,22 @@ async function buildVectorStore() {
 
     // 2. Embed in batches of 20
     const BATCH = 20;
-    for (let i = 0; i < docs.length; i += BATCH) {
-      const batch = docs.slice(i, i + BATCH);
-      const texts = batch.map((d) => d.text);
-      const embeddings = await embed(texts);
-      for (let j = 0; j < batch.length; j++) {
-        vectorStore.push({ ...batch[j], embedding: embeddings[j] });
+    try {
+      for (let i = 0; i < docs.length; i += BATCH) {
+        const batch = docs.slice(i, i + BATCH);
+        const texts = batch.map((d) => d.text);
+        const embeddings = await embed(texts);
+        for (let j = 0; j < batch.length; j++) {
+          vectorStore.push({ ...batch[j], embedding: embeddings[j] });
+        }
       }
+      storeReady = true;
+      console.log(`[chatbot] Vector store ready — ${vectorStore.length} chunks indexed.`);
+    } catch (err) {
+      console.error('[chatbot] Failed to build vector store:', err.message);
+      // Mark as ready but empty so chat can still work (fallback to no RAG)
+      storeReady = true;
     }
-
-    storeReady = true;
-    console.log(`[chatbot] Vector store ready — ${vectorStore.length} chunks indexed.`);
   })();
 
   return buildPromise;
@@ -517,7 +536,7 @@ They can book up to 3 services (3 slots remaining).
 --- END ---`;
     } else {
       const resvList = userContext.reservations
-        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [${r.status}] [${r.hoursUntil}h until reservation] [canEdit/cancel: ${r.canModify}]`)
+        .map((r, i) => `  ${i + 1}. [ID:${r.id}] ${r.shop} — ${r.service} (${r.duration} min, ฿${r.price}) on ${r.date} [ends: ${r.endTime}] [${r.status}] [${r.hoursUntil}h until reservation] [canEdit/cancel: ${r.canModify}]`)
         .join('\n');
       reservationBlock = `
 --- USER RESERVATION STATUS ---
@@ -573,6 +592,10 @@ The knowledge base contains both English and Thai text — use whichever matches
 
 Rules:
 - Users can have at most 3 active (pending/confirmed) reservations at a time
+- Users CANNOT book a new reservation if its time window overlaps with any existing active reservation.
+  For example: if user has a booking for Coconut Oil massage (60 min) at 12:00 PM, they cannot book any service from 12:00 PM to 1:00 PM on the same day until they cancel that reservation.
+  Always check the user's existing reservations list for time conflicts before confirming or emitting [[BOOK:...]].
+  If a conflict exists, inform the user which existing reservation is blocking the time slot.
 - Users can cancel or edit pending/confirmed reservations at least 1 day (>24 hours) before the reservation date
 - The server has already computed [canEdit/cancel: true/false] and [Xh until reservation] for each booking — use these values directly, do NOT recalculate yourself
 - If canEdit/cancel is false, tell the user they cannot cancel/edit and the cutoff has passed

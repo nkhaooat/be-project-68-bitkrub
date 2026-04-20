@@ -41,7 +41,7 @@ dotenv.config({ path: './config/config.env' });
 connectDB();
 
 // Pre-warm chatbot vector store after DB connects
-const { buildVectorStore } = require('./utils/chatbot');
+const { buildVectorStore, resetVectorStore } = require('./utils/chatbot');
 setTimeout(() => {
   if (process.env.OPENAI_API_KEY) {
     buildVectorStore().catch((err) => console.error('[chatbot] pre-warm failed:', err.message));
@@ -49,6 +49,54 @@ setTimeout(() => {
     console.warn('[chatbot] OPENAI_API_KEY not set — vector store will build on first request');
   }
 }, 3000);
+
+// ---------------------------------------------------------------------------
+// Daily cron: rebuild embedding at 12:00 PM Bangkok time when new data exists
+// ---------------------------------------------------------------------------
+const MassageShop = require('./models/MassageShop');
+const MassageService = require('./models/MassageService');
+
+let lastEmbeddingRebuild = new Date(0); // epoch = never rebuilt
+
+function scheduleNoonRebuild() {
+  const now = new Date();
+  // Compute next 12:00 PM Bangkok (UTC+7)
+  const bangkokOffset = 7 * 60 * 60 * 1000;
+  const nowBangkok = new Date(now.getTime() + bangkokOffset);
+  const nextNoon = new Date(nowBangkok);
+  nextNoon.setUTCHours(5, 0, 0, 0); // 12:00 Bangkok = 05:00 UTC
+  if (nowBangkok.getUTCHours() >= 5) {
+    // Already past noon today — schedule for tomorrow
+    nextNoon.setUTCDate(nextNoon.getUTCDate() + 1);
+  }
+  const msUntilNoon = nextNoon.getTime() - now.getTime();
+  console.log(`[cron] Next embedding rebuild check scheduled in ${Math.round(msUntilNoon / 60000)} minutes (noon Bangkok).`);
+
+  setTimeout(async () => {
+    try {
+      // Check if any new data since last rebuild
+      const since = lastEmbeddingRebuild;
+      const newShops = await MassageShop.countDocuments({ createdAt: { $gt: since } });
+      const newServices = await MassageService.countDocuments({ createdAt: { $gt: since } });
+      if (newShops > 0 || newServices > 0) {
+        console.log(`[cron] Found ${newShops} new shop(s) and ${newServices} new service(s) since last rebuild. Rebuilding embedding...`);
+        resetVectorStore();
+        await buildVectorStore();
+        lastEmbeddingRebuild = new Date();
+        console.log('[cron] Embedding rebuild complete.');
+      } else {
+        console.log('[cron] No new data since last rebuild — skipping embedding rebuild.');
+      }
+    } catch (err) {
+      console.error('[cron] Embedding rebuild failed:', err.message);
+    }
+    // Schedule next noon check
+    scheduleNoonRebuild();
+  }, msUntilNoon);
+}
+
+// Start the noon cron after DB connects (give it 5s)
+setTimeout(() => scheduleNoonRebuild(), 5000);
 
 // Mount routers
 app.use('/api/v1/shops', shops);

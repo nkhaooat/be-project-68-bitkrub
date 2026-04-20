@@ -54,6 +54,11 @@ exports.chatWithBot = async (req, res) => {
                 dateStyle: 'medium',
                 timeStyle: 'short'
               }),
+              endTime: (() => {
+                const dur = r.service?.duration || 60;
+                const end = new Date(new Date(r.resvDate).getTime() + dur * 60 * 1000);
+                return end.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
+              })(),
               resvDate: r.resvDate,
               hoursUntil: Math.round(hoursUntil * 10) / 10,
               canModify,

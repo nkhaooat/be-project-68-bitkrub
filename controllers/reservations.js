@@ -136,6 +136,30 @@ exports.createReservation = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Service does not belong to the selected shop' });
         }
 
+        // Check for time-overlap with the user's existing active reservations
+        // A reservation occupies [resvDate, resvDate + duration minutes)
+        const newStart = new Date(req.body.resvDate);
+        const newEnd = new Date(newStart.getTime() + service.duration * 60 * 1000);
+
+        const existingReservations = await Reservation.find({
+            user: req.user.id,
+            status: { $in: ['pending', 'confirmed'] }
+        }).populate('service', 'duration');
+
+        for (const existing of existingReservations) {
+            const existingStart = new Date(existing.resvDate);
+            const existingDuration = existing.service?.duration || 60;
+            const existingEnd = new Date(existingStart.getTime() + existingDuration * 60 * 1000);
+
+            // Check overlap: new reservation starts before existing ends AND ends after existing starts
+            if (newStart < existingEnd && newEnd > existingStart) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Time conflict: you already have a reservation from ${existingStart.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' })} to ${existingEnd.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' })} on ${existingStart.toLocaleDateString('en-US', { timeZone: 'Asia/Bangkok' })}. Please choose a different time.`
+                });
+            }
+        }
+
         // Set the user from auth token
         req.body.user = req.user.id;
 
