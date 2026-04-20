@@ -39,16 +39,63 @@ function expandDistrictAliases(row) {
   return Array.from(out);
 }
 
+// Line code prefix → { lineName, lineNameTh, network }
+const LINE_META = {
+  N:   { lineName: 'BTS Sukhumvit North', lineNameTh: 'บีทีเอส สายสุขุมวิท (เหนือ)', network: 'BTS' },
+  E:   { lineName: 'BTS Sukhumvit East',  lineNameTh: 'บีทีเอส สายสุขุมวิท (ตะวันออก)', network: 'BTS' },
+  S:   { lineName: 'BTS Silom South',     lineNameTh: 'บีทีเอส สายสีลม (ใต้)', network: 'BTS' },
+  W:   { lineName: 'BTS Silom West',      lineNameTh: 'บีทีเอส สายสีลม (ตะวันตก)', network: 'BTS' },
+  G:   { lineName: 'BTS Gold Line',       lineNameTh: 'บีทีเอส สายสีทอง', network: 'BTS' },
+  CEN: { lineName: 'BTS Siam Central',    lineNameTh: 'บีทีเอส สยาม', network: 'BTS' },
+  BL:  { lineName: 'MRT Blue Line',       lineNameTh: 'MRT สายสีน้ำเงิน', network: 'MRT' },
+  PP:  { lineName: 'MRT Purple Line',     lineNameTh: 'MRT สายสีม่วง', network: 'MRT' },
+  YL:  { lineName: 'MRT Yellow Line',     lineNameTh: 'MRT สายสีเหลือง', network: 'MRT' },
+  PK:  { lineName: 'MRT Pink Line',       lineNameTh: 'MRT สายสีชมพู', network: 'MRT' },
+  RN:  { lineName: 'SRT Red Line North',  lineNameTh: 'รถไฟชานเมืองสายสีแดง (เหนือ)', network: 'SRT' },
+  RW:  { lineName: 'SRT Red Line West',   lineNameTh: 'รถไฟชานเมืองสายสีแดง (ตะวันตก)', network: 'SRT' },
+  A:   { lineName: 'Airport Rail Link',   lineNameTh: 'แอร์พอร์ต เรล ลิงก์', network: 'ARL' },
+  MT:  { lineName: 'Muang Thong Monorail',lineNameTh: 'มอนอเรลเมืองทองธานี', network: 'MT' },
+};
+
+function getLineMeta(code) {
+  // Try longest prefix match first (BL, PP, YL, PK, RN, RW, MT, CEN, then single char)
+  for (const prefix of ['CEN','BL','PP','YL','PK','RN','RW','MT','A','N','E','S','W','G']) {
+    if (code.startsWith(prefix)) return { prefix, ...LINE_META[prefix] };
+  }
+  return null;
+}
+
 // Expand alias list for transit station rows (name,lat,lng,aliases,type format)
 function expandTransitAliases(row) {
   const out = new Set();
-  if (row.name) out.add(norm(row.name));
+  const name = (row.name || '').trim();
+  const code = ((row.aliases || '').split(',')[1] || '').trim(); // aliases col: "Name, CODE, ..."
+  if (name) out.add(norm(name));
+
+  // Add raw code (e.g. "n8", "bl22") so "BTS N8" / "สถานี N8" resolves
+  if (code) {
+    out.add(norm(code));           // e.g. "n8"
+    const meta = getLineMeta(code.toUpperCase());
+    if (meta) {
+      // "BTS N8", "MRT BL22", etc.
+      out.add(norm(`${meta.network} ${code}`));
+      // line name aliases
+      out.add(norm(meta.lineName));
+      out.add(norm(meta.lineNameTh));
+      // "สถานี N8", "station N8"
+      out.add(norm(`สถานี ${code}`));
+      out.add(norm(`station ${code}`));
+    }
+  }
+
+  // Expand all provided aliases
   if (row.aliases) {
     for (const a of row.aliases.split(',')) {
       const t = a.trim();
       if (t) out.add(norm(t));
     }
   }
+
   // Thai alias map for major transit stations
   const thaiMap = {
     'siam':               ['สยาม', 'สยามสแควร์'],
@@ -74,6 +121,25 @@ function expandTransitAliases(row) {
     'lat phrao':          ['ลาดพร้าว'],
     'makkasan':           ['มักกะสัน'],
     'suvarnabhumi':       ['สุวรรณภูมิ'],
+    'bang sue':           ['บางซื่อ', 'กรุงเทพอภิวัฒน์'],
+    'krung thep aphiwat': ['กรุงเทพอภิวัฒน์', 'บางซื่อ'],
+    'sam yan':            ['สามย่าน'],
+    'silom':              ['สีลม'],
+    'lumphini':           ['ลุมพินี'],
+    'phra ram 9':         ['พระราม 9'],
+    'ratchadaphisek':     ['รัชดาภิเษก', 'รัชดา'],
+    'huai khwang':        ['ห้วยขวาง'],
+    'thailand cultural centre': ['ศูนย์วัฒนธรรมแห่งประเทศไทย', 'ศูนย์วัฒนธรรม'],
+    'chit lom':           ['ชิดลม'],
+    'phloen chit':        ['เพลินจิต'],
+    'phrom phong':        ['พร้อมพงษ์'],
+    'queen sirikit national convention centre': ['ศูนย์การประชุมแห่งชาติสิริกิติ์', 'qsncc'],
+    'wongwian yai':       ['วงเวียนใหญ่'],
+    'bang wa':            ['บางหว้า'],
+    'talat phlu':         ['ตลาดพลู'],
+    'saphan taksin':      ['สะพานตากสิน'],
+    'krung thon buri':    ['กรุงธนบุรี'],
+    'charoen nakhon':     ['เจริญนคร'],
   };
   for (const [en, thList] of Object.entries(thaiMap)) {
     if (out.has(norm(en))) {
