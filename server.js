@@ -58,19 +58,16 @@ const MassageService = require('./models/MassageService');
 
 let lastEmbeddingRebuild = new Date(0); // epoch = never rebuilt
 
-function scheduleNoonRebuild() {
+function scheduleMidnightRebuild() {
   const now = new Date();
-  // Compute next 12:00 PM Bangkok (UTC+7)
+  // Compute next midnight Bangkok (00:00 UTC+7 = 17:00 UTC previous day)
   const bangkokOffset = 7 * 60 * 60 * 1000;
   const nowBangkok = new Date(now.getTime() + bangkokOffset);
-  const nextNoon = new Date(nowBangkok);
-  nextNoon.setUTCHours(5, 0, 0, 0); // 12:00 Bangkok = 05:00 UTC
-  if (nowBangkok.getUTCHours() >= 5) {
-    // Already past noon today — schedule for tomorrow
-    nextNoon.setUTCDate(nextNoon.getUTCDate() + 1);
-  }
-  const msUntilNoon = nextNoon.getTime() - now.getTime();
-  console.log(`[cron] Next embedding rebuild check scheduled in ${Math.round(msUntilNoon / 60000)} minutes (noon Bangkok).`);
+  const nextMidnight = new Date(nowBangkok);
+  nextMidnight.setUTCHours(17, 0, 0, 0); // 00:00 Bangkok = 17:00 UTC (previous day)
+  nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1); // Always tomorrow midnight
+  const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+  console.log(`[cron] Next embedding rebuild check scheduled in ${Math.round(msUntilMidnight / 60000)} minutes (midnight Bangkok).`);
 
   setTimeout(async () => {
     try {
@@ -90,13 +87,13 @@ function scheduleNoonRebuild() {
     } catch (err) {
       console.error('[cron] Embedding rebuild failed:', err.message);
     }
-    // Schedule next noon check
-    scheduleNoonRebuild();
-  }, msUntilNoon);
+    // Schedule next midnight check
+    scheduleMidnightRebuild();
+  }, msUntilMidnight);
 }
 
-// Start the noon cron after DB connects (give it 5s)
-setTimeout(() => scheduleNoonRebuild(), 5000);
+// Start the midnight cron after DB connects (give it 5s)
+setTimeout(() => scheduleMidnightRebuild(), 5000);
 
 // Mount routers
 app.use('/api/v1/shops', shops);

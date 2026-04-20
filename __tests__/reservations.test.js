@@ -106,10 +106,12 @@ describe('createReservation', () => {
   it('TC-R5: creates reservation successfully', async () => {
     const fakeReservation = { _id: 'resv1', shop: SHOP_ID, service: SERVICE_ID, user: USER_ID };
     Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({ populate: jest.fn().mockResolvedValue([]) });
     MassageShop.findById    = jest.fn().mockResolvedValue({ _id: SHOP_ID });
     MassageService.findById = jest.fn().mockResolvedValue({
       _id: SERVICE_ID,
       shop: { toString: () => SHOP_ID },
+      duration: 60,
     });
     Reservation.create = jest.fn().mockResolvedValue(fakeReservation);
 
@@ -141,6 +143,187 @@ describe('createReservation', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: false, message: 'DB error' })
+    );
+  });
+
+  // ─── Time-overlap constraint tests ─────────────────────────────────────────
+
+  it('TC-R7: rejects when new reservation overlaps with existing (same time)', async () => {
+    const existingStart = new Date('2026-03-28T12:00:00+07:00');
+    const existingReservation = {
+      _id: 'existing1',
+      resvDate: existingStart,
+      service: { duration: 60 },
+    };
+
+    Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue([existingReservation])
+    });
+    MassageShop.findById = jest.fn().mockResolvedValue({ _id: SHOP_ID });
+    MassageService.findById = jest.fn().mockResolvedValue({
+      _id: SERVICE_ID,
+      shop: { toString: () => SHOP_ID },
+      duration: 60,
+    });
+
+    // Try to book at same time 12:00-13:00
+    const req = {
+      user: { id: USER_ID, role: 'user' },
+      body: { shop: SHOP_ID, service: SERVICE_ID, resvDate: existingStart },
+    };
+    const res = mockRes();
+
+    await createReservation(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, message: expect.stringContaining('Time conflict') })
+    );
+  });
+
+  it('TC-R8: rejects when new reservation overlaps partially (starts during existing)', async () => {
+    const existingStart = new Date('2026-03-28T12:00:00+07:00');
+    const existingReservation = {
+      _id: 'existing1',
+      resvDate: existingStart,
+      service: { duration: 60 }, // 12:00-13:00
+    };
+
+    Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue([existingReservation])
+    });
+    MassageShop.findById = jest.fn().mockResolvedValue({ _id: SHOP_ID });
+    MassageService.findById = jest.fn().mockResolvedValue({
+      _id: SERVICE_ID,
+      shop: { toString: () => SHOP_ID },
+      duration: 60,
+    });
+
+    // Try to book at 12:30 (overlaps 12:00-13:00)
+    const newStart = new Date('2026-03-28T12:30:00+07:00');
+    const req = {
+      user: { id: USER_ID, role: 'user' },
+      body: { shop: SHOP_ID, service: SERVICE_ID, resvDate: newStart },
+    };
+    const res = mockRes();
+
+    await createReservation(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, message: expect.stringContaining('Time conflict') })
+    );
+  });
+
+  it('TC-R9: rejects when new reservation overlaps partially (ends during existing)', async () => {
+    const existingStart = new Date('2026-03-28T13:00:00+07:00');
+    const existingReservation = {
+      _id: 'existing1',
+      resvDate: existingStart,
+      service: { duration: 60 }, // 13:00-14:00
+    };
+
+    Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue([existingReservation])
+    });
+    MassageShop.findById = jest.fn().mockResolvedValue({ _id: SHOP_ID });
+    MassageService.findById = jest.fn().mockResolvedValue({
+      _id: SERVICE_ID,
+      shop: { toString: () => SHOP_ID },
+      duration: 90, // 12:30-14:00 overlaps 13:00-14:00
+    });
+
+    const newStart = new Date('2026-03-28T12:30:00+07:00');
+    const req = {
+      user: { id: USER_ID, role: 'user' },
+      body: { shop: SHOP_ID, service: SERVICE_ID, resvDate: newStart },
+    };
+    const res = mockRes();
+
+    await createReservation(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, message: expect.stringContaining('Time conflict') })
+    );
+  });
+
+  it('TC-R10: allows non-overlapping reservations (back-to-back is OK)', async () => {
+    const existingStart = new Date('2026-03-28T12:00:00+07:00');
+    const existingReservation = {
+      _id: 'existing1',
+      resvDate: existingStart,
+      service: { duration: 60 }, // 12:00-13:00
+    };
+
+    Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue([existingReservation])
+    });
+    MassageShop.findById = jest.fn().mockResolvedValue({ _id: SHOP_ID });
+    MassageService.findById = jest.fn().mockResolvedValue({
+      _id: SERVICE_ID,
+      shop: { toString: () => SHOP_ID },
+      duration: 60,
+    });
+
+    const fakeReservation = { _id: 'resv2', shop: SHOP_ID, service: SERVICE_ID, user: USER_ID };
+    Reservation.create = jest.fn().mockResolvedValue(fakeReservation);
+
+    // Book at exactly 13:00 (back-to-back, no overlap)
+    const newStart = new Date('2026-03-28T13:00:00+07:00');
+    const req = {
+      user: { id: USER_ID, role: 'user' },
+      body: { shop: SHOP_ID, service: SERVICE_ID, resvDate: newStart },
+    };
+    const res = mockRes();
+
+    await createReservation(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true })
+    );
+  });
+
+  it('TC-R11: allows non-overlapping reservations (gap between)', async () => {
+    const existingStart = new Date('2026-03-28T12:00:00+07:00');
+    const existingReservation = {
+      _id: 'existing1',
+      resvDate: existingStart,
+      service: { duration: 60 }, // 12:00-13:00
+    };
+
+    Reservation.countDocuments = jest.fn().mockResolvedValue(1);
+    Reservation.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue([existingReservation])
+    });
+    MassageShop.findById = jest.fn().mockResolvedValue({ _id: SHOP_ID });
+    MassageService.findById = jest.fn().mockResolvedValue({
+      _id: SERVICE_ID,
+      shop: { toString: () => SHOP_ID },
+      duration: 60,
+    });
+
+    const fakeReservation = { _id: 'resv2', shop: SHOP_ID, service: SERVICE_ID, user: USER_ID };
+    Reservation.create = jest.fn().mockResolvedValue(fakeReservation);
+
+    // Book at 14:00 (1 hour gap)
+    const newStart = new Date('2026-03-28T14:00:00+07:00');
+    const req = {
+      user: { id: USER_ID, role: 'user' },
+      body: { shop: SHOP_ID, service: SERVICE_ID, resvDate: newStart },
+    };
+    const res = mockRes();
+
+    await createReservation(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true })
     );
   });
 });
