@@ -52,3 +52,189 @@
 51,Ari,"13.7795, 100.5443","Phahonyothin, Ari Soi","อารีย์, BTS Ari"
 52,Victory Monument,"13.7620, 100.5371","Phaya Thai, Ratchawithi","อนุสาวรีย์ชัยสมรภูมิ, BTS Victory Monument"
 53,Mo Chit,"13.8034, 100.5539","Phahonyothin","หมอชิต, BTS Mo Chit, Chatuchak Park"
+
+name,lat,lng,aliases,type
+Khu Khot,13.9312,100.6420,"Khu Khot, N24, BTS Khu Khot, Northern Terminus, Khu Khot Police Station",transit
+Yaek Kor Por Aor,13.9255,100.6234,"Yaek Kor Por Aor, N23, BTS Yaek Kor Por Aor, RTAF Gate, Phahonyothin 54/1",transit
+Royal Thai Air Force Museum,13.9184,100.6223,"Royal Thai Air Force Museum, N22, BTS Royal Thai Air Force Museum",transit
+Bhumibol Adulyadej Hospital,13.9079,100.6186,"Bhumibol Adulyadej Hospital, N21, BTS Bhumibol Adulyadej Hospital",transit
+Saphan Mai,13.8962,100.6094,"Saphan Mai, N20, BTS Saphan Mai, Ying Charoen Market",transit
+Sai Yud,13.8864,100.6033,"Sai Yud, N19, BTS Sai Yud, CGH Hospital",transit
+Phahon Yothin 59,13.8810,100.6006,"Phahon Yothin 59, N18, BTS Phahon Yothin 59, Lotus's Laksi",transit
+Wat Phra Sri Mahathat,13.8761,100.5973,"Wat Phra Sri Mahathat, N17, BTS Wat Phra Sri Mahathat, Pink Line Interchange",transit
+11th Infantry Regiment,13.8655,100.5908,"11th Infantry Regiment, N16, BTS 11th Infantry Regiment, 11th Infantry Regiment Base",transit
+Bang Bua,13.8569,100.5855,"Bang Bua, N15, BTS Bang Bua, Sripatum University",transit
+Royal Forest Department,13.8496,100.5818,"Royal Forest Department, N14, BTS Royal Forest Department",transit
+Kasetsart University,13.8407,100.5768,"Kasetsart University, N13, BTS Kasetsart University, Kasetsart University (Bangkhen Campus)",transit
+Sena Nikhom,13.8340,100.5732,"Sena Nikhom, N12, BTS Sena Nikhom, Paolo Hospital Kaset",transit
+Ratchayothin,13.8276,100.5686,"Ratchayothin, N11, BTS Ratchayothin, Major Cineplex Ratchayothin, Box Space",transit
+Phahon Yothin 24,13.8209,100.5645,"Phahon Yothin 24, N10, BTS Phahon Yothin 24, Elephant Tower (Short Walk)",transit
+Ha Yaek Lat Phrao,13.8155,100.5611,"Ha Yaek Lat Phrao, N9, BTS Ha Yaek Lat Phrao, Central Ladprao, Union Mall",transit
+Mo Chit,13.8024,100.5538,"Mo Chit, N8, BTS Mo Chit, Chatuchak Weekend Market, Chatuchak Park",transit
+Saphan Khwai,13.7935,100.5495,"Saphan Khwai, N7, BTS Saphan Khwai, Paolo Memorial Hospital, Big C Saphan Khwai",transit
+Ari,13.7798,100.5446,"Ari, N5, BTS Ari, La Villa Ari, Ari Cafe District",transit
+Sanam Pao,13.7725,100.5414,"Sanam Pao, N4, BTS Sanam Pao, Phramongkutklao Hospital",transit
+Victory Monument,13.7627,100.5371,"Victory Monument, N3, BTS Victory Monument, Boat Noodle Alley",transit
+Phaya Thai,13.7568,100.5338,"Phaya Thai, N2, BTS Phaya Thai, ARL Interchange, Let's Relax Spa",transit
+Ratchathewi,13.7516,100.5315,"Ratchathewi, N1, BTS Ratchathewi, Coco Walk, Asia Hotel",transit
+Siam,13.7456,100.5341,"Siam, CEN, BTS Siam, Siam Paragon, Siam Square, MBK Center",transit
+Chit Lom,13.7441,100.5432,"Chit Lom, E1, BTS Chit Lom, CentralwOrld, Erawan Shrine",transit
+Phloen Chit,13.7431,100.5489,"Phloen Chit, E2, BTS Phloen Chit, Central Embassy, Park Ventures",transit
+Nana,13.7405,100.5554,"Nana, E3, BTS Nana, Nana Plaza, Sukhumvit Soi 11",transit
+Asok,13.7367,100.5595,"Asok, E4, BTS Asok, Terminal 21, Soi Cowboy (MRT Interchange)",transit
+Phrom Phong,13.7303,100.5697,"Phrom Phong, E5, BTS Phrom Phong, EmQuartier, Emporium, Benchasiri Park",transit
+Thong Lo,13.7242,100.5778,"Thong Lo, E6, BTS Thong Lo, Premium nightlife, The Commons",transit
+Ekkamai,13.7198,100.5851,"Ekkamai, E7, BTS Ekkamai, Gateway Ekkamai, Eastern Bus Terminal",transit
+Phra Khanong,13.7153,100.5913,"Phra Khanong, E8, BTS Phra Khanong, W District, Summer Hill",transit
+On Nut,13.7056,100.6015,"On Nut, E9, BTS On Nut, Century The Movie Plaza, Lotus's On Nut",transit
+Bang Chak,13.6968,100.6051,"Bang Chak, E10, BTS Bang Chak, Jim Thompson Factory Outlet",transit
+Punnawithi,13.6888,100.6089,"Punnawithi, E11, BTS Punnawithi, True Digital Park (101 The Third Place)",transit
+Udom Suk,13.6798,100.6094,"Udom Suk, E12, BTS Udom Suk, Udom Suk Market, One Udomsuk",transit
+Bang Na,13.6675,100.6044,"Bang Na, E13, BTS Bang Na, BITEC Exhibition Centre, Bangkok Mall",transit
+Bearing,13.6596,100.6009,"Bearing, E14, BTS Bearing, Lasalle area, Centerpoint Entertainment",transit
+Samrong,13.6465,100.5957,"Samrong, E15, BTS Samrong, Imperial World Samrong, Yellow Line Interchange",transit
+Pu Chao,13.6368,100.5912,"Pu Chao, E16, BTS Pu Chao, Big C Samrong 2, Panasonic Factory Area",transit
+Chang Erawan,13.6234,100.5898,"Chang Erawan, E17, BTS Chang Erawan, The Erawan Museum",transit
+Royal Thai Naval Academy,13.6136,100.5933,"Royal Thai Naval Academy, E18, BTS Royal Thai Naval Academy",transit
+Pak Nam,13.6062,100.5966,"Pak Nam, E19, BTS Pak Nam, Samut Prakan Observation Tower",transit
+Srinagarindra,13.5959,100.6025,"Srinagarindra, E20, BTS Srinagarindra, Samut Prakan City Hall",transit
+Phraek Sa,13.5855,100.6007,"Phraek Sa, E21, BTS Phraek Sa, Robinson Lifestyle Samut Prakan",transit
+Sai Luat,13.5739,100.5997,"Sai Luat, E22, BTS Sai Luat, Big C Samut Prakan",transit
+Kheha,13.5552,100.6006,"Kheha, E23, BTS Kheha, Southern Terminus, Ancient City (Muang Boran)",transit
+National Stadium,13.7466,100.5289,"National Stadium, W1, BTS National Stadium, Western Terminus, MBK Center, BACC",transit
+Ratchadamri,13.7391,100.5397,"Ratchadamri, S1, BTS Ratchadamri, Royal Bangkok Sports Club, Lumphini Park",transit
+Sala Daeng,13.7285,100.5343,"Sala Daeng, S2, BTS Sala Daeng, Silom Complex, Patpong Night Market, Lumphini",transit
+Chong Nonsi,13.7238,100.5296,"Chong Nonsi, S3, BTS Chong Nonsi, King Power Mahanakhon SkyWalk",transit
+Saint Louis,13.7214,100.5262,"Saint Louis, S4, BTS Saint Louis, Saint Louis Hospital, AIA Sathorn Tower",transit
+Surasak,13.7193,100.5218,"Surasak, S5, BTS Surasak, Bangkok Christian College, Blue Elephant",transit
+Saphan Taksin,13.7183,100.5142,"Saphan Taksin, S6, BTS Saphan Taksin, Sathorn Pier (Chao Phraya Express Boats)",transit
+Krung Thon Buri,13.7212,100.5027,"Krung Thon Buri, S7, BTS Krung Thon Buri, Gold Line Interchange",transit
+Wongwian Yai,13.7208,100.4952,"Wongwian Yai, S8, BTS Wongwian Yai, King Taksin Monument",transit
+Pho Nimit,13.7196,100.4855,"Pho Nimit, S9, BTS Pho Nimit, Wat Pho Nimit",transit
+Talat Phlu,13.7135,100.4777,"Talat Phlu, S10, BTS Talat Phlu, The Mall Tha Phra, Talat Phlu Street Food",transit
+Wutthakat,13.7126,100.4682,"Wutthakat, S11, BTS Wutthakat, Access to Wat Paknam Bhasicharoen (via taxi/boat)",transit
+Bang Wa,13.7206,100.4578,"Bang Wa, S12, BTS Bang Wa, Southern Terminus, Blue Line Interchange",transit
+Charoen Nakhon,13.7265,100.5098,"Charoen Nakhon, G2, BTS Charoen Nakhon, ICONSIAM Shopping Complex",transit
+Khlong San,13.7314,100.5092,"Khlong San, G3, BTS Khlong San, Terminus, Taksin Hospital, Lhong 1919 (Walk)",transit
+Tha Phra,13.7296,100.4746,"Tha Phra, BL01, MRT Tha Phra, Major Loop Interchange",transit
+Charan 13,13.7388,100.4716,"Charan 13, BL02, MRT Charan 13, TCC Technology IT Center",transit
+Fai Chai,13.7538,100.4704,"Fai Chai, BL03, MRT Fai Chai, Fai Chai Intersection",transit
+Bang Khun Non,13.7629,100.4741,"Bang Khun Non, BL04, MRT Bang Khun Non, SRT Red Line Interchange (Walk)",transit
+Bang Yi Khan,13.7770,100.4851,"Bang Yi Khan, BL05, MRT Bang Yi Khan, PATA Pinklao, Chang Chui (Taxi)",transit
+Sirindhorn,13.7847,100.4938,"Sirindhorn, BL06, MRT Sirindhorn, Tang Hua Seng Department Store",transit
+Bang Phlat,13.7925,100.5015,"Bang Phlat, BL07, MRT Bang Phlat, Lotus's Bang Phlat",transit
+Bang O,13.8000,100.5098,"Bang O, BL08, MRT Bang O, Yanhee International Hospital",transit
+Bang Pho,13.8066,100.5218,"Bang Pho, BL09, MRT Bang Pho, Bang Pho Pier (Chao Phraya Express)",transit
+Tao Poon,13.8062,100.5305,"Tao Poon, BL10, MRT Tao Poon, Purple Line Interchange",transit
+Bang Sue,13.8033,100.5398,"Bang Sue, BL11, MRT Bang Sue, Krung Thep Aphiwat Central Terminal",transit
+Kamphaeng Phet,13.7975,100.5478,"Kamphaeng Phet, BL12, MRT Kamphaeng Phet, Chatuchak Weekend Market, Or Tor Kor",transit
+Chatuchak Park,13.8025,100.5539,"Chatuchak Park, BL13, MRT Chatuchak Park, BTS Mo Chit Interchange",transit
+Phahon Yothin,13.8136,100.5615,"Phahon Yothin, BL14, MRT Phahon Yothin, Central Ladprao, BTS Ha Yaek Lat Phrao",transit
+Lat Phrao,13.8048,100.5739,"Lat Phrao, BL15, MRT Lat Phrao, Yellow Line Interchange, Gourmet Market",transit
+Ratchadaphisek,13.7981,100.5746,"Ratchadaphisek, BL16, MRT Ratchadaphisek, The Bazaar Hotel Bangkok",transit
+Sutthisan,13.7895,100.5739,"Sutthisan, BL17, MRT Sutthisan, Muang Thai Phatra Complex",transit
+Huai Khwang,13.7782,100.5739,"Huai Khwang, BL18, MRT Huai Khwang, Huai Khwang Night Market, Ganesha Shrine",transit
+Thailand Cultural Centre,13.7663,100.5707,"Thailand Cultural Centre, BL19, MRT Thailand Cultural Centre, The Esplanade, The Street Ratchada",transit
+Phra Ram 9,13.7584,100.5656,"Phra Ram 9, BL20, MRT Phra Ram 9, Central Rama 9, JODD FAIRS",transit
+Phetchaburi,13.7490,100.5630,"Phetchaburi, BL21, MRT Phetchaburi, ARL Makkasan Interchange, Singha Complex",transit
+Sukhumvit,13.7367,100.5595,"Sukhumvit, BL22, MRT Sukhumvit, Terminal 21, BTS Asok Interchange",transit
+Queen Sirikit National Convention Centre,13.7233,100.5598,"Queen Sirikit National Convention Centre, BL23, MRT Queen Sirikit National Convention Centre, QSNCC, Benjakitti Park",transit
+Khlong Toei,13.7225,100.5534,"Khlong Toei, BL24, MRT Khlong Toei, Port Authority, Khlong Toei Market (Walk)",transit
+Lumphini,13.7258,100.5458,"Lumphini, BL25, MRT Lumphini, Lumphini Park, One Bangkok",transit
+Si Lom,13.7285,100.5375,"Si Lom, BL26, MRT Si Lom, BTS Sala Daeng Interchange, Patpong",transit
+Sam Yan,13.7324,100.5284,"Sam Yan, BL27, MRT Sam Yan, Samyan Mitrtown, Chulalongkorn University",transit
+Hua Lamphong,13.7381,100.5173,"Hua Lamphong, BL28, MRT Hua Lamphong, Old Bangkok Railway Station",transit
+Wat Mangkon,13.7433,100.5090,"Wat Mangkon, BL29, MRT Wat Mangkon, Chinatown (Yaowarat)",transit
+Sam Yot,13.7471,100.5037,"Sam Yot, BL30, MRT Sam Yot, The Old Siam Plaza, Mega Plaza",transit
+Sanam Chai,13.7438,100.4941,"Sanam Chai, BL31, MRT Sanam Chai, Grand Palace, Wat Pho, Museum Siam",transit
+Itsaraphap,13.7377,100.4854,"Itsaraphap, BL32, MRT Itsaraphap, Wat Arun (Closest station, short taxi/walk)",transit
+(Tha Phra),13.7296,100.4746,"(Tha Phra), (BL01), (Train passes back through the loop origin)",transit
+Bang Phai,13.7235,100.4658,"Bang Phai, BL33, MRT Bang Phai, Bang Phai Hospital, Wat Paknam (Taxi)",transit
+Phetkasem 48,13.7161,100.4452,"Phetkasem 48, BL35, MRT Phetkasem 48, Wat Chan Pradittharam",transit
+Phasi Charoen,13.7135,100.4344,"Phasi Charoen, BL36, MRT Phasi Charoen, Seacon Bangkae",transit
+Bang Khae,13.7121,100.4206,"Bang Khae, BL37, MRT Bang Khae, Bang Khae Market",transit
+Lak Song,13.7118,100.4042,"Lak Song, BL38, MRT Lak Song, Western Terminus, The Mall Bangkae",transit
+Khlong Bang Phai,13.8927,100.4077,"Khlong Bang Phai, PP01, MRT Purple Khlong Bang Phai, Purple Line Khlong Bang Phai, Northern Terminus, MRT Depot",transit
+Talad Bang Yai,13.8765,100.4109,"Talad Bang Yai, PP02, MRT Purple Talad Bang Yai, Purple Line Talad Bang Yai, Central WestGate, IKEA Bang Yai",transit
+Sam Yaek Bang Yai,13.8690,100.4190,"Sam Yaek Bang Yai, PP03, MRT Purple Sam Yaek Bang Yai, Purple Line Sam Yaek Bang Yai, Bang Yai Market, Kasemrad Hospital",transit
+Bang Phlu,13.8762,100.4358,"Bang Phlu, PP04, MRT Purple Bang Phlu, Purple Line Bang Phlu, Wat Bang Phai",transit
+Bang Rak Yai,13.8778,100.4468,"Bang Rak Yai, PP05, MRT Purple Bang Rak Yai, Purple Line Bang Rak Yai, Bang Rak Yai Local Area",transit
+Bang Rak Noi Tha It,13.8753,100.4571,"Bang Rak Noi Tha It, PP06, MRT Purple Bang Rak Noi Tha It, Purple Line Bang Rak Noi Tha It, Tha It Market Area",transit
+Sai Ma,13.8722,100.4686,"Sai Ma, PP07, MRT Purple Sai Ma, Purple Line Sai Ma, Phra Nangklao Bridge (West Bank)",transit
+Phra Nangklao Bridge,13.8710,100.4796,"Phra Nangklao Bridge, PP08, MRT Purple Phra Nangklao Bridge, Purple Line Phra Nangklao Bridge, Rajamangala University (RMUTSB)",transit
+Yaek Nonthaburi 1,13.8653,100.4939,"Yaek Nonthaburi 1, PP09, MRT Purple Yaek Nonthaburi 1, Purple Line Yaek Nonthaburi 1, Central Rattanathibet",transit
+Bang Krasor,13.8624,100.5042,"Bang Krasor, PP10, MRT Purple Bang Krasor, Purple Line Bang Krasor, Big C Rattanathibet",transit
+Nonthaburi Civic Center,13.8601,100.5139,"Nonthaburi Civic Center, PP11, MRT Purple Nonthaburi Civic Center, Purple Line Nonthaburi Civic Center, Makut Rommayasaran Park, Pink Line Interchange",transit
+Ministry of Public Health,13.8483,100.5146,"Ministry of Public Health, PP12, MRT Purple Ministry of Public Health, Purple Line Ministry of Public Health, Ministry of Public Health Compound",transit
+Yaek Tiwanon,13.8398,100.5146,"Yaek Tiwanon, PP13, MRT Purple Yaek Tiwanon, Purple Line Yaek Tiwanon, Big C Tiwanon (Short walk)",transit
+Wong Sawang,13.8287,100.5282,"Wong Sawang, PP14, MRT Purple Wong Sawang, Purple Line Wong Sawang, Big C Wong Sawang",transit
+Bang Son,13.8203,100.5317,"Bang Son, PP15, MRT Purple Bang Son, Purple Line Bang Son, SRT Light Red Line Interchange",transit
+Phawana,13.8005,100.5835,"Phawana, YL02, MRT Yellow Phawana, Yellow Line Phawana, Lat Phrao Soi 41",transit
+Chok Chai 4,13.7961,100.5927,"Chok Chai 4, YL03, MRT Yellow Chok Chai 4, Yellow Line Chok Chai 4, Chok Chai 4 Food Market",transit
+Lat Phrao 71,13.7924,100.6015,"Lat Phrao 71, YL04, MRT Yellow Lat Phrao 71, Yellow Line Lat Phrao 71, Lat Phrao Soi 71 Area",transit
+Lat Phrao 83,13.7885,100.6095,"Lat Phrao 83, YL05, MRT Yellow Lat Phrao 83, Yellow Line Lat Phrao 83, Imperial World Lat Phrao, Big C",transit
+Mahatthai,13.7844,100.6171,"Mahatthai, YL06, MRT Yellow Mahatthai, Yellow Line Mahatthai, Lat Phrao Hospital",transit
+Lat Phrao 101,13.7801,100.6253,"Lat Phrao 101, YL07, MRT Yellow Lat Phrao 101, Yellow Line Lat Phrao 101, Vejthani Hospital",transit
+Bang Kapi,13.7651,100.6436,"Bang Kapi, YL08, MRT Yellow Bang Kapi, Yellow Line Bang Kapi, The Mall Lifestore Bangkapi",transit
+Yaek Lam Sali,13.7621,100.6465,"Yaek Lam Sali, YL09, MRT Yellow Yaek Lam Sali, Yellow Line Yaek Lam Sali, Lam Sali Intersection",transit
+Si Kritha,13.7505,100.6455,"Si Kritha, YL10, MRT Yellow Si Kritha, Yellow Line Si Kritha, Krungthep Kreetha Area",transit
+Phatthanakan,13.7380,100.6455,"Phatthanakan, YL11, MRT Yellow Phatthanakan, Yellow Line Phatthanakan, ARL Hua Mak Interchange",transit
+Kalantan,13.7252,100.6462,"Kalantan, YL12, MRT Yellow Kalantan, Yellow Line Kalantan, Thanya Park Shopping Mall",transit
+Si Nut,13.7128,100.6465,"Si Nut, YL13, MRT Yellow Si Nut, Yellow Line Si Nut, Iam Sombat Market",transit
+Srinagarindra 38,13.7001,100.6468,"Srinagarindra 38, YL14, MRT Yellow Srinagarindra 38, Yellow Line Srinagarindra 38, Srinagarindra Soi 38 Area",transit
+Suan Luang Rama IX,13.6888,100.6483,"Suan Luang Rama IX, YL15, MRT Yellow Suan Luang Rama IX, Yellow Line Suan Luang Rama IX, Seacon Square, Paradise Park",transit
+Si Udom,13.6766,100.6464,"Si Udom, YL16, MRT Yellow Si Udom, Yellow Line Si Udom, Synphaet Srinagarindra Hospital",transit
+Si Iam,13.6661,100.6437,"Si Iam, YL17, MRT Yellow Si Iam, Yellow Line Si Iam, Wat Si Iam, Yellow Line Depot",transit
+Si La Salle,13.6552,100.6409,"Si La Salle, YL18, MRT Yellow Si La Salle, Yellow Line Si La Salle, Sikarin Hospital, Lasalle Road",transit
+Si Bearing,13.6453,100.6385,"Si Bearing, YL19, MRT Yellow Si Bearing, Yellow Line Si Bearing, Bearing Road (Sukhumvit 107)",transit
+Si Dan,13.6334,100.6346,"Si Dan, YL20, MRT Yellow Si Dan, Yellow Line Si Dan, Foodland Srinagarindra",transit
+Si Thepha,13.6288,100.6264,"Si Thepha, YL21, MRT Yellow Si Thepha, Yellow Line Si Thepha, Thepharak Intersection",transit
+Thipphawan,13.6333,100.6150,"Thipphawan, YL22, MRT Yellow Thipphawan, Yellow Line Thipphawan, Thipphawan Village",transit
+Khae Rai,13.8688,100.5186,"Khae Rai, PK02, MRT Pink Khae Rai, Pink Line Khae Rai, Central Chest Institute of Thailand",transit
+Sanambin Nam,13.8824,100.5147,"Sanambin Nam, PK03, MRT Pink Sanambin Nam, Pink Line Sanambin Nam, Sanambin Nam Intersection",transit
+Samakkhi,13.8906,100.5113,"Samakkhi, PK04, MRT Pink Samakkhi, Pink Line Samakkhi, Samakkhi Road Junction",transit
+Royal Irrigation Dept.,13.9008,100.5053,"Royal Irrigation Dept., PK05, MRT Pink Royal Irrigation Dept., Pink Line Royal Irrigation Dept., Royal Irrigation Department",transit
+Yaek Pak Kret,13.9073,100.4998,"Yaek Pak Kret, PK06, MRT Pink Yaek Pak Kret, Pink Line Yaek Pak Kret, Pak Kret Intersection, Major Hollywood",transit
+Pak Kret Bypass,13.9037,100.5152,"Pak Kret Bypass, PK07, MRT Pink Pak Kret Bypass, Pink Line Pak Kret Bypass, Big C Extra Chaeng Watthana 2",transit
+Chaeng Watthana-Pak Kret 28,13.9025,100.5283,"Chaeng Watthana-Pak Kret 28, PK08, MRT Pink Chaeng Watthana-Pak Kret 28, Pink Line Chaeng Watthana-Pak Kret 28, Central Chaengwattana",transit
+Si Rat,13.9009,100.5367,"Si Rat, PK09, MRT Pink Si Rat, Pink Line Si Rat, Thai Watsadu Chaengwattana",transit
+Muang Thong Thani,13.8996,100.5444,"Muang Thong Thani, PK10, MRT Pink Muang Thong Thani, Pink Line Muang Thong Thani, Makro, Interchange for IMPACT Branch",transit
+Chaeng Watthana 14,13.8966,100.5562,"Chaeng Watthana 14, PK11, MRT Pink Chaeng Watthana 14, Pink Line Chaeng Watthana 14, Big C Chaeng Watthana, Mongkutwattana Hospital",transit
+Government Complex,13.8927,100.5684,"Government Complex, PK12, MRT Pink Government Complex, Pink Line Government Complex",transit
+National Telecom,13.8885,100.5786,"National Telecom, PK13, MRT Pink National Telecom, Pink Line National Telecom, National Telecom Headquarters",transit
+Lak Si,13.8856,100.5843,"Lak Si, PK14, MRT Pink Lak Si, Pink Line Lak Si, IT Square Laksi, SRT Red Line Interchange",transit
+Rajabhat Phranakhon,13.8812,100.5927,"Rajabhat Phranakhon, PK15, MRT Pink Rajabhat Phranakhon, Pink Line Rajabhat Phranakhon, Phranakhon Rajabhat University",transit
+Ram Inthra 3,13.8732,100.6121,"Ram Inthra 3, PK17, MRT Pink Ram Inthra 3, Pink Line Ram Inthra 3, Central Ramindra",transit
+Lat Pla Khao,13.8706,100.6225,"Lat Pla Khao, PK18, MRT Pink Lat Pla Khao, Pink Line Lat Pla Khao, Big C Extra Ramindra",transit
+Ram Inthra Kor Mor 4,13.8661,100.6342,"Ram Inthra Kor Mor 4, PK19, MRT Pink Ram Inthra Kor Mor 4, Pink Line Ram Inthra Kor Mor 4, Ram Inthra Soi 39",transit
+Maiyalap,13.8624,100.6433,"Maiyalap, PK20, MRT Pink Maiyalap, Pink Line Maiyalap, Ram Inthra Soi 14 (Maiyalap)",transit
+Vacharaphol,13.8569,100.6558,"Vacharaphol, PK21, MRT Pink Vacharaphol, Pink Line Vacharaphol, Vacharaphol Intersection",transit
+Ram Inthra Kor Mor 6,13.8524,100.6652,"Ram Inthra Kor Mor 6, PK22, MRT Pink Ram Inthra Kor Mor 6, Pink Line Ram Inthra Kor Mor 6, Ram Inthra Soi 40",transit
+Khu Bon,13.8431,100.6755,"Khu Bon, PK23, MRT Pink Khu Bon, Pink Line Khu Bon, Synphaet Ramintra Hospital",transit
+Ram Inthra Kor Mor 9,13.8268,100.6811,"Ram Inthra Kor Mor 9, PK24, MRT Pink Ram Inthra Kor Mor 9, Pink Line Ram Inthra Kor Mor 9, Fashion Island, The Promenade",transit
+Outer Ring Road - Ram Inthra,13.8214,100.6865,"Outer Ring Road - Ram Inthra, PK25, MRT Pink Outer Ring Road - Ram Inthra, Pink Line Outer Ring Road - Ram Inthra, Kanchanaphisek Road Junction",transit
+Nopparat,13.8166,100.6953,"Nopparat, PK26, MRT Pink Nopparat, Pink Line Nopparat, Nopparat Rajathanee Hospital",transit
+Bang Chan,13.8135,100.7042,"Bang Chan, PK27, MRT Pink Bang Chan, Pink Line Bang Chan, Bang Chan Industrial Estate",transit
+Setthabutbamphen,13.8142,100.7165,"Setthabutbamphen, PK28, MRT Pink Setthabutbamphen, Pink Line Setthabutbamphen, Setthabutbamphen School",transit
+Min Buri Market,13.8131,100.7231,"Min Buri Market, PK29, MRT Pink Min Buri Market, Pink Line Min Buri Market, Chatuchak 2 Min Buri",transit
+Min Buri,13.8122,100.7303,"Min Buri, PK30, MRT Pink Min Buri, Pink Line Min Buri, Eastern Terminus, Orange Line Interchange (Future)",transit
+IMPACT Muang Thong Thani,13.9125,100.5408,"IMPACT Muang Thong Thani, MT01, SRT IMPACT Muang Thong Thani, IMPACT Arena, Challenger Halls",transit
+Lake Muang Thong Thani,13.9189,100.5452,"Lake Muang Thong Thani, MT02, SRT Lake Muang Thong Thani, Muang Thong Thani Lake, Cosmo Bazaar",transit
+Krung Thep Aphiwat,13.8033,100.5398,"Krung Thep Aphiwat, RN01, SRT Krung Thep Aphiwat, Bangkok's Central Terminal, MRT Interchange",transit
+Chatuchak,13.8222,100.5518,"Chatuchak, RN02, SRT Chatuchak, Chatuchak Park, Mo Chit Bus Terminal (Short taxi)",transit
+Wat Samian Nari,13.8394,100.5562,"Wat Samian Nari, RN03, SRT Wat Samian Nari",transit
+Bang Khen,13.8475,100.5595,"Bang Khen, RN04, SRT Bang Khen, Kasetsart University (Vibhavadi side)",transit
+Thung Song Hong,13.8741,100.5746,"Thung Song Hong, RN05, SRT Thung Song Hong, Thai PBS Headquarters",transit
+Kan Kheha,13.8966,100.5901,"Kan Kheha, RN07, SRT Kan Kheha, Don Mueang Housing Estate",transit
+Don Mueang,13.9135,100.5962,"Don Mueang, RN08, SRT Don Mueang, Don Mueang International Airport (DMK)",transit
+Lak Hok,13.9634,100.5955,"Lak Hok, RN09, SRT Lak Hok, Rangsit University",transit
+Rangsit,13.9846,100.6018,"Rangsit, RN10, SRT Rangsit, Northern Terminus, Future Park Rangsit",transit
+Bang Bamru,13.7915,100.4852,"Bang Bamru, RW05, SRT Bang Bamru, Chang Chui Market (Walk/Taxi)",transit
+Taling Chan,13.7842,100.4554,"Taling Chan, RW06, SRT Taling Chan, Western Terminus, Taling Chan Floating Market",transit
+Ratchaprarop,13.7548,100.5412,"Ratchaprarop, A7, ARL Ratchaprarop, Pratunam Market, Baiyoke Tower II",transit
+Makkasan,13.7506,100.5620,"Makkasan, A6, ARL Makkasan, City Air Terminal, MRT Blue Line Interchange",transit
+Ramkhamhaeng,13.7431,100.6002,"Ramkhamhaeng, A5, ARL Ramkhamhaeng, Ramkhamhaeng University Area",transit
+Hua Mak,13.7380,100.6455,"Hua Mak, A4, ARL Hua Mak, Yellow Line Interchange",transit
+Ban Thap Chang,13.7335,100.6896,"Ban Thap Chang, A3, ARL Ban Thap Chang, Krungthep Kreetha Residential Area",transit
+Lat Krabang,13.7275,100.7483,"Lat Krabang, A2, ARL Lat Krabang, Lat Krabang Industrial Estate",transit
+Suvarnabhumi,13.6899,100.7501,"Suvarnabhumi, A1, ARL Suvarnabhumi, Airport Terminus, Suvarnabhumi Airport (BKK)",transit
