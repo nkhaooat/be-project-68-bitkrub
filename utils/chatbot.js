@@ -12,6 +12,7 @@
  */
 
 const OpenAI = require('openai');
+const path = require('path');
 const MassageShop = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
 
@@ -48,6 +49,50 @@ async function embed(input) {
   });
   const vecs = response.data.map((d) => d.embedding);
   return isArray ? vecs : vecs[0];
+}
+
+// ---------------------------------------------------------------------------
+// Geo helpers (near-intent, alias anchors, distance)
+// ---------------------------------------------------------------------------
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// District/area anchors loader
+let GEO_ALIASES = [];
+try {
+  const { loadAnchors, norm } = require('./geo/loadAnchors');
+  GEO_ALIASES = loadAnchors(path.join(__dirname, 'geo', 'geo_anchors.csv'));
+  // Add a few hardcoded extras/variants
+  const pushExtra = (labels, lat, lng) => GEO_ALIASES.push({ labels: labels.map(l => l.toLowerCase()), lat, lng });
+  pushExtra(['bts พญาไท','arl พญาไท','bts phaya thai','arl phaya thai','phyathai','payathai'], 13.7565, 100.5325);
+} catch (e) {
+  // Fallback to minimal in-file anchors if loader fails
+  GEO_ALIASES = [
+    { labels: ['พญาไท','phaya thai','phyathai','payathai'], lat: 13.7810, lng: 100.5428 },
+    { labels: ['ราชเทวี','ratchathewi','victory monument','อนุสาวรีย์ชัยสมรภูมิ'], lat: 13.7589, lng: 100.5344 },
+    { labels: ['สยาม','siam','siam square','pathum wan','ปทุมวัน'], lat: 13.7449, lng: 100.5222 },
+  ];
+}
+
+function detectGeoAnchor(text) {
+  const q = (text || '').toLowerCase();
+  // basic near intent words (Thai + EN)
+  const nearIntent = /(near|around|ใกล้|แถว|ย่าน|บริเวณ|โซน)/i.test(q);
+  for (const spot of GEO_ALIASES) {
+    if (spot.labels.some(lbl => q.includes(lbl))) {
+      return { ...spot, nearIntent: true };
+    }
+  }
+  return nearIntent ? null : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +246,7 @@ async function buildVectorStore() {
         thai && thai.locationTh ? `ที่อยู่: ${thai.locationTh}` : '',
         shop.searchArea ? `Area: ${shop.searchArea}` : '',
         thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
+        `Keywords: พญาไท, Phaya Thai, Phyathai, BTS Phaya Thai, ARL Phaya Thai, ราชเทวี, Ratchathewi, สยาม, Siam, Siam Square`,
         `Address: ${shop.address}`,
         shop.tel ? `Phone: ${shop.tel}` : '',
         `Hours: ${shop.openTime} – ${shop.closeTime}`,
@@ -223,7 +269,16 @@ async function buildVectorStore() {
 
       docs.push({
         text: shopText,
-        metadata: { type: 'shop', shopId, shopName: shop.name, tiktokLinks },
+        metadata: {
+          type: 'shop',
+          shopId,
+          shopName: shop.name,
+          tiktokLinks,
+          lat: shop.coordinates?.lat ?? null,
+          lng: shop.coordinates?.lng ?? null,
+          area: shop.searchArea || null,
+          areaTh: thai?.searchAreaTh || null,
+        },
       });
 
       // --- Per-service chunks (English + Thai) ---
@@ -259,6 +314,10 @@ async function buildVectorStore() {
             shopName: shop.name,
             serviceId: svc._id.toString(),
             serviceName: svc.name,
+            lat: shop.coordinates?.lat ?? null,
+            lng: shop.coordinates?.lng ?? null,
+            area: shop.searchArea || null,
+            areaTh: thai?.searchAreaTh || null,
           },
         });
       }
@@ -332,7 +391,28 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const queryEmbedding = await embed(userMessage);
 
   // Retrieve relevant chunks — filter out service chunks from other shops when a shop is pinned
-  const allHits = retrieve(queryEmbedding, 12);
+  const anchor = detectGeoAnchor(userMessage);
+  let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
+  if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
+    allHits = allHits
+      .map(h => {
+        const lat = h.metadata?.lat;
+        const lng = h.metadata?.lng;
+        let geoBoost = 0;
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          const dKm = haversineKm(anchor.lat, anchor.lng, lat, lng);
+          const maxKm = 7, strongKm = 3;
+          if (dKm <= maxKm) {
+            const t = Math.max(0, Math.min(1, (maxKm - dKm) / (maxKm - strongKm)));
+            geoBoost = 0.35 + 0.65 * t; // 0.35..1.0
+          }
+        }
+        const blended = 0.65 * h.score + 0.35 * geoBoost; // tune as needed
+        return { ...h, score: blended };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+  }
   // We'll apply shop filter after pinning is resolved below
 
   // --- Shop-pinning: find the shop the user is currently talking about ---
@@ -341,8 +421,8 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   let shopPinBlock = '';
   let mentionedShop = null;
   try {
-    const MassageShop = require('./models/MassageShop');
-    const MassageService = require('./models/MassageService');
+    const MassageShop = require('../models/MassageShop');
+    const MassageService = require('../models/MassageService');
     const recentMessages = history.slice(-8).map(m => m.content);
     const recentText = recentMessages.join('\n') + '\n' + userMessage;
 
@@ -591,4 +671,4 @@ function resetVectorStore() {
   buildPromise = null;
 }
 
-module.exports = { buildVectorStore, chat, resetVectorStore };
+module.exports = { buildVectorStore, chat, resetVectorStore }; // Google photo helper at utils/google/photos.js for map/thumbnail fallback

@@ -1,6 +1,6 @@
 const express = require('express');
 const { getShops, getShop, createShop, updateShop, deleteShop, getShopAreas,
-        addTiktokLinks, updateTiktokLinks, removeTiktokLink, updateDescription } = require('../controllers/shops');
+        addTiktokLinks, updateTiktokLinks, removeTiktokLink, updateDescription, getShopPhoto } = require('../controllers/shops');
 const { protect, authorize } = require('../middleware/auth');
 const router = express.Router({ mergeParams: true });
 
@@ -19,6 +19,9 @@ router.route('/:id')
     .get(getShop)
     .put(protect, authorize('admin'), updateShop)
     .delete(protect, authorize('admin'), deleteShop);
+
+router.route('/:id/photo')
+    .get(getShopPhoto);
 
 // TikTok link management (US1-2, US1-3, US1-4)
 router.route('/:id/tiktok')

@@ -1,4 +1,5 @@
 const MassageShop = require('../models/MassageShop');
+const fetch = require('node-fetch');
 
 // @desc    Get all massage shops
 // @route   GET /api/v1/shops
@@ -50,20 +51,27 @@ exports.getShops = async (req, res, next) => {
         const shops = await MassageShop.find(query)
             .sort(sortQuery)
             .skip(startIndex)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         const pages = Math.ceil(total / limit);
 
+        // Add photo proxy URL for frontend fallback usage
+        const data = shops.map(s => ({
+            ...s,
+            photoProxy: `/api/v1/shops/${s._id}/photo?fallback=1`
+        }));
+
         res.status(200).json({
             success: true,
-            count: shops.length,
+            count: data.length,
             pagination: {
                 total,
                 page,
                 pages,
                 limit
             },
-            data: shops
+            data
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -91,13 +99,62 @@ exports.getShopAreas = async (req, res, next) => {
 // @access  Public
 exports.getShop = async (req, res, next) => {
     try {
-        const shop = await MassageShop.findById(req.params.id).populate('services');
+        const shop = await MassageShop.findById(req.params.id).populate('services').lean();
         if (!shop) {
             return res.status(404).json({ success: false, message: `Shop not found with id of ${req.params.id}` });
         }
+        shop.photoProxy = `/api/v1/shops/${shop._id}/photo?fallback=1`;
         res.status(200).json({ success: true, data: shop });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Proxy a shop photo from Google Places API to avoid exposing API key
+// @route   GET /api/v1/shops/:id/photo
+// @access  Public
+exports.getShopPhoto = async (req, res, next) => {
+    try {
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+            return res.status(400).json({ success: false, message: 'GOOGLE_MAPS_API_KEY not configured' });
+        }
+        const shop = await MassageShop.findById(req.params.id).lean();
+        if (!shop) {
+            return res.status(404).json({ success: false, message: `Shop not found with id of ${req.params.id}` });
+        }
+        // If DB has a direct photo URL and client allows fallback, redirect quickly
+        const fallback = typeof req.query.fallback === 'string' ? req.query.fallback === '1' : true;
+
+        // Try Places Photos v1
+        if (shop.placeId) {
+            const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(shop.placeId)}?fields=photos`;
+            const dResp = await fetch(detailsUrl, { headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'photos' } });
+            if (dResp.ok) {
+                const dJson = await dResp.json();
+                const name = dJson.photos && dJson.photos[0] && dJson.photos[0].name; // e.g., places/ABC/photos/DEF
+                if (name) {
+                    const mediaUrl = `https://places.googleapis.com/v1/${name}/media?maxWidthPx=800&maxHeightPx=600`;
+                    const pResp = await fetch(mediaUrl, { headers: { 'X-Goog-Api-Key': apiKey } });
+                    if (pResp.ok) {
+                        const ct = pResp.headers.get('content-type') || 'image/jpeg';
+                        const buf = Buffer.from(await pResp.arrayBuffer());
+                        res.set('Content-Type', ct);
+                        res.set('Cache-Control', 'public, max-age=86400'); // 1 day
+                        return res.send(buf);
+                    }
+                }
+            }
+        }
+        // Fallback to DB photo or first in photos[]
+        if (fallback) {
+            const url = shop.photo || (Array.isArray(shop.photos) && shop.photos.length ? shop.photos[0] : null);
+            if (url) return res.redirect(url);
+        }
+        // Nothing available
+        res.status(404).json({ success: false, message: 'No photo available' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
