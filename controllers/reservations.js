@@ -477,38 +477,14 @@ exports.verifyQR = async (req, res, next) => {
 };
 
 // ---------------------------------------------------------------------------
-// Email helpers (Brevo)
+// Email helpers (Brevo) — uses same BrevoClient as auth.js
 // ---------------------------------------------------------------------------
-const Sib = require('sib-api-v3-sdk');
+const { BrevoClient } = require('@getbrevo/brevo');
 const QRCode = require('qrcode');
-
-function getBrevoClient() {
-    const defaultClient = Sib.ApiClient.instance;
-    defaultClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-    return new Sib.TransactionalEmailsApi();
-}
 
 async function generateQRBuffer(token) {
     const verifyUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/api/v1/qr/verify/${token}`;
     return await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
-}
-
-async function sendBrevoEmail(to, subject, htmlContent, inlineImage) {
-    const Sib = require('sib-api-v3-sdk');
-    const defaultClient = Sib.ApiClient.instance;
-    defaultClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-    const api = new Sib.TransactionalEmailsApi();
-
-    const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: process.env.BREVO_FROM_NAME || 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
-    sendSmtpEmail.to = to;
-    sendSmtpEmail.subject = subject;
-    sendSmtpEmail.htmlContent = htmlContent;
-    if (inlineImage) {
-        sendSmtpEmail.attachment = [inlineImage];
-    }
-
-    await api.sendTransacEmail(sendSmtpEmail);
 }
 
 async function sendConfirmationEmail(reservation) {
@@ -532,45 +508,62 @@ async function sendConfirmationEmail(reservation) {
     const qrBuffer = await generateQRBuffer(reservation.qrToken);
     const qrBase64 = qrBuffer.toString('base64');
 
-    // Use Brevo REST API directly for inline image support
-    const fetch = require('node-fetch');
-    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'api-key': process.env.BREVO_API_KEY
-        },
-        body: JSON.stringify({
-            sender: { name: process.env.BREVO_FROM_NAME || 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL },
-            to: [{ email: user.email, name: user.name }],
-            subject: 'Booking Confirmed — Dungeon Inn',
-            htmlContent: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #E57A00;">Dungeon Inn — Booking Confirmed</h2>
-                <p>Hi ${user.name},</p>
-                <p>Your reservation has been created successfully!</p>
-                <table style="border-collapse: collapse; margin: 16px 0;">
-                    <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
-                    <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
-                    <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
-                    <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${time}</td></tr>
-                </table>
-                <p>Show this QR code at the shop:</p>
-                <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px;" />
-                <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
-            </div>`,
-            attachment: [{
-                name: 'qrcode.png',
-                content: qrBase64,
-                contentType: 'image/png',
-                contentId: 'qrcode'
-            }]
-        })
+    const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+    await brevo.transactionalEmails.sendTransacEmail({
+        to: [{ email: user.email, name: user.name }],
+        sender: { email: process.env.BREVO_FROM_EMAIL, name: process.env.BREVO_FROM_NAME || 'Dungeon Inn' },
+        subject: '🎉 Booking Confirmed — Dungeon Inn',
+        htmlContent: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Booking Confirmed</title></head>
+<body style="margin:0;padding:0;background-color:#1A1A1A;font-family:'Segoe UI',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1A1A1A;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#2B2B2B;border:1px solid #403A36;border-radius:12px;overflow:hidden;">
+        <!-- Header -->
+        <tr><td style="background-color:#2C1E18;padding:32px 40px;text-align:center;border-bottom:2px solid #E57A00;">
+          <h1 style="margin:0;font-size:28px;font-weight:800;color:#E57A00;letter-spacing:1px;">⚔️ DUNGEON INN</h1>
+          <p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Massage Reservation</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px 40px 32px;">
+          <h2 style="margin:0 0 16px;font-size:22px;color:#F0E5D8;">Booking Confirmed! 🎉</h2>
+          <p style="margin:0 0 16px;font-size:15px;color:#A88C6B;line-height:1.6;">
+            Greetings, <strong style="color:#D4CFC6;">${user.name}</strong>! Your reservation has been created.
+          </p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1A1A1A;border-radius:8px;margin:16px 0;">
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;width:120px;">🏪 Shop</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${shop?.name || 'N/A'}</td></tr>
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">💆 Service</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${service?.name || 'N/A'}</td></tr>
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">📅 Date</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${date}</td></tr>
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">🕐 Time</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${time}</td></tr>
+          </table>
+          <p style="margin:24px 0 8px;font-size:15px;color:#A88C6B;line-height:1.6;">
+            📱 Your QR code is attached to this email. Show it at the shop to verify your booking.
+          </p>
+          <div style="border-top:1px solid #403A36;padding-top:24px;margin-top:24px;">
+            <p style="margin:0;font-size:13px;color:#8A8177;line-height:1.6;">
+              💡 You can also view and download your QR code from the My Bookings page.
+            </p>
+          </div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background-color:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;">
+          <p style="margin:0;font-size:12px;color:#5A544E;">
+            © 2026 Dungeon Inn. All rights reserved. &nbsp;|&nbsp;
+            <span style="color:#E57A00;">Happy adventuring!</span>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+        attachment: [{
+            name: 'dungeon-inn-qrcode.png',
+            content: qrBase64
+        }]
     });
-
-    if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`Brevo API ${resp.status}: ${err}`);
-    }
     console.log(`[email] Confirmation sent to ${user.email}`);
 }
 
@@ -589,27 +582,49 @@ async function sendCancellationEmail(reservation) {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    const api = getBrevoClient();
-    const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
-    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
-    sendSmtpEmail.subject = 'Booking Cancelled — Dungeon Inn';
-    sendSmtpEmail.htmlContent = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #E57A00;">Dungeon Inn — Booking Cancelled</h2>
-            <p>Hi ${user.name},</p>
-            <p>Your reservation has been cancelled.</p>
-            <table style="border-collapse: collapse; margin: 16px 0;">
-                <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
-            </table>
-            <p>Your QR code is now void and cannot be used.</p>
-            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
-        </div>
-    `;
-
-    await api.sendTransacEmail(sendSmtpEmail);
+    const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+    await brevo.transactionalEmails.sendTransacEmail({
+        to: [{ email: user.email, name: user.name }],
+        sender: { email: process.env.BREVO_FROM_EMAIL, name: process.env.BREVO_FROM_NAME || 'Dungeon Inn' },
+        subject: '❌ Booking Cancelled — Dungeon Inn',
+        htmlContent: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Booking Cancelled</title></head>
+<body style="margin:0;padding:0;background-color:#1A1A1A;font-family:'Segoe UI',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1A1A1A;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#2B2B2B;border:1px solid #403A36;border-radius:12px;overflow:hidden;">
+        <tr><td style="background-color:#2C1E18;padding:32px 40px;text-align:center;border-bottom:2px solid #E57A00;">
+          <h1 style="margin:0;font-size:28px;font-weight:800;color:#E57A00;letter-spacing:1px;">⚔️ DUNGEON INN</h1>
+          <p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Massage Reservation</p>
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <h2 style="margin:0 0 16px;font-size:22px;color:#F0E5D8;">Booking Cancelled</h2>
+          <p style="margin:0 0 16px;font-size:15px;color:#A88C6B;line-height:1.6;">
+            Hi <strong style="color:#D4CFC6;">${user.name}</strong>, your reservation has been cancelled.
+          </p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1A1A1A;border-radius:8px;margin:16px 0;">
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;width:120px;">🏪 Shop</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${shop?.name || 'N/A'}</td></tr>
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">💆 Service</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${service?.name || 'N/A'}</td></tr>
+            <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">📅 Date</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${date}</td></tr>
+          </table>
+          <div style="background-color:#3B1A1A;border:1px solid #7F1D1D;border-radius:8px;padding:16px;margin:24px 0;">
+            <p style="margin:0;font-size:14px;color:#FCA5A5;line-height:1.6;">⛔ Your QR code is now <strong>void</strong> and cannot be used at the shop.</p>
+          </div>
+        </td></tr>
+        <tr><td style="background-color:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;">
+          <p style="margin:0;font-size:12px;color:#5A544E;">
+            © 2026 Dungeon Inn. All rights reserved. &nbsp;|&nbsp;
+            <span style="color:#E57A00;">Happy adventuring!</span>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+    });
     console.log(`[email] Cancellation sent to ${user.email}`);
 }
 
@@ -625,23 +640,51 @@ async function sendReviewRequestEmail(reservation) {
     const shop = reservation.shop;
     const reviewUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/mybookings`;
 
-    const api = getBrevoClient();
-    const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
-    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
-    sendSmtpEmail.subject = 'How was your visit? — Dungeon Inn';
-    sendSmtpEmail.htmlContent = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #E57A00;">Dungeon Inn — How was your visit?</h2>
-            <p>Hi ${user.name},</p>
-            <p>Your appointment at <strong>${shop?.name || 'the shop'}</strong> has been completed.</p>
-            <p>We'd love to hear your feedback! Leave a review to help others find great massage services.</p>
-            <a href="${reviewUrl}" style="display: inline-block; background: #E57A00; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Leave a Review</a>
-            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
-        </div>
-    `;
-
-    await api.sendTransacEmail(sendSmtpEmail);
+    const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+    await brevo.transactionalEmails.sendTransacEmail({
+        to: [{ email: user.email, name: user.name }],
+        sender: { email: process.env.BREVO_FROM_EMAIL, name: process.env.BREVO_FROM_NAME || 'Dungeon Inn' },
+        subject: '⭐ How was your visit? — Dungeon Inn',
+        htmlContent: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Review Your Visit</title></head>
+<body style="margin:0;padding:0;background-color:#1A1A1A;font-family:'Segoe UI',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1A1A1A;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#2B2B2B;border:1px solid #403A36;border-radius:12px;overflow:hidden;">
+        <tr><td style="background-color:#2C1E18;padding:32px 40px;text-align:center;border-bottom:2px solid #E57A00;">
+          <h1 style="margin:0;font-size:28px;font-weight:800;color:#E57A00;letter-spacing:1px;">⚔️ DUNGEON INN</h1>
+          <p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Massage Reservation</p>
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <h2 style="margin:0 0 16px;font-size:22px;color:#F0E5D8;">How was your visit? ⭐</h2>
+          <p style="margin:0 0 16px;font-size:15px;color:#A88C6B;line-height:1.6;">
+            Hi <strong style="color:#D4CFC6;">${user.name}</strong>, your appointment at <strong style="color:#D4CFC6;">${shop?.name || 'the shop'}</strong> has been completed.
+          </p>
+          <p style="margin:0 0 24px;font-size:15px;color:#A88C6B;line-height:1.6;">
+            We'd love to hear your feedback! Leave a review to help others find great massage services.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+            <tr><td align="center" style="padding:8px 0 32px;">
+              <a href="${reviewUrl}" style="display:inline-block;padding:14px 36px;background-color:#E57A00;color:#1A110A;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.5px;">
+                ⭐ Leave a Review
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="background-color:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;">
+          <p style="margin:0;font-size:12px;color:#5A544E;">
+            © 2026 Dungeon Inn. All rights reserved. &nbsp;|&nbsp;
+            <span style="color:#E57A00;">Happy adventuring!</span>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+    });
     console.log(`[email] Review request sent to ${user.email}`);
 }
 
