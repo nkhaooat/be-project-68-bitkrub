@@ -14,9 +14,13 @@
 
 jest.mock('../models/MassageShop');
 jest.mock('../utils/google/places');
+jest.mock('../models/Review', () => ({
+  aggregate: jest.fn().mockResolvedValue([]),
+}));
 
 const MassageShop = require('../models/MassageShop');
 const { getPlacePhotoBuffer, getFallbackPhotoUrl } = require('../utils/google/places');
+const Review = require('../models/Review');
 const { getShopPhoto, getShops, getShop } = require('../controllers/shops');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

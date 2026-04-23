@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Reservation = require('../models/Reservation');
 const Review = require('../models/Review');
 
@@ -68,7 +69,16 @@ exports.getShopReviews = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.json({ success: true, count: reviews.length, data: reviews });
+    // Calculate average rating
+    const stats = await Review.aggregate([
+      { $match: { shop: new mongoose.Types.ObjectId(req.params.shopId) } },
+      { $group: { _id: null, avgRating: { $avg: '$rating' }, count: { $sum: 1 } } },
+    ]);
+
+    const avgRating = stats.length > 0 ? Math.round(stats[0].avgRating * 10) / 10 : 0;
+    const reviewCount = stats.length > 0 ? stats[0].count : 0;
+
+    res.json({ success: true, count: reviews.length, avgRating, reviewCount, data: reviews });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

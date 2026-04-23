@@ -1,4 +1,5 @@
 const MassageShop = require('../models/MassageShop');
+const Review = require('../models/Review');
 const { getPlacePhotoBuffer, getFallbackPhotoUrl } = require('../utils/google/places');
 
 // @desc    Get all massage shops
@@ -58,10 +59,21 @@ exports.getShops = async (req, res, next) => {
 
         // Add photo proxy URL and Google photo availability flag
         const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        // Get platform review stats for all shops in this page
+        const shopIds = shops.map(s => s._id);
+        const reviewStats = await Review.aggregate([
+            { $match: { shop: { $in: shopIds } } },
+            { $group: { _id: '$shop', avgRating: { $avg: '$rating' }, reviewCount: { $sum: 1 } } },
+        ]);
+        const reviewStatsMap = new Map(reviewStats.map(s => [s._id.toString(), s]));
+
         const data = shops.map(s => ({
             ...s,
             photoProxy: `${baseUrl}/api/v1/shops/${s._id}/photo?fallback=1`,
-            hasGooglePhoto: !!s.placeId  // EPIC 3: indicate if Google photo is available
+            hasGooglePhoto: !!s.placeId,  // EPIC 3: indicate if Google photo is available
+            platformRating: reviewStatsMap.has(s._id.toString()) ? Math.round(reviewStatsMap.get(s._id.toString()).avgRating * 10) / 10 : 0,
+            platformReviewCount: reviewStatsMap.has(s._id.toString()) ? reviewStatsMap.get(s._id.toString()).reviewCount : 0,
         }));
 
         res.status(200).json({
