@@ -305,3 +305,48 @@
 | Sprint 6 | QR + Email notifications | 22 h |
 | Sprint 7 | Merchant role + Admin panel | 24 h |
 | **Grand Total** | | **46 h** |
+
+---
+
+## EPIC 4: Massage Promotion
+
+### US 4-1: Apply Promotion Code Before Payment
+| Task | Volunteer 1 | Volunteer 2 | Status |
+|------|-------------|-------------|--------|
+| Create Promotion model schema | Natthadon Chairuangsirikul | Wachiraphan Tisanthia | ✅ |
+| POST /promotions/validate endpoint | Teerapat Sardsud | Atichat Saengmani | ✅ |
+| Discount calculation (flat/percentage) | Itthipat Wongnoppawich | Methasit Phanawongwat | ✅ |
+| Add promotionCode to Reservation model | Methasit Phanawongwat | Chatchapon Malayapun | ✅ |
+| Apply discount on reservation create | Sarana Thanadeecharoenchok | Methasit Phanawongwat | ✅ |
+| Promotion code input + Apply button (booking page) | Atichat Saengmani | Anupat Tubsri | ✅ |
+| Display discounted price breakdown | Chatchapon Malayapun | Atichat Saengmani | ✅ |
+| Display discounted price breakdown | Natthadon Chairuangsirikul | Teerapat Sardsud | ✅ |
+| Prevent booking until price confirmed | Methasit Phanawongwat | Natchanon Maidee | ✅ |
+
+### US 4-2: Upload Payment Slip
+| Task | Volunteer 1 | Volunteer 2 | Status |
+|------|-------------|-------------|--------|
+| Configure image upload (multer) | Teerapat Sardsud | Methasit Phanawongwat | ✅ |
+| Add slipImageUrl + paymentStatus to Reservation | Itthipat Wongnoppawich | Sarana Thanadeecharoenchok | ✅ |
+| POST /reservations/:id/slip endpoint | Anupat Tubsri | Natchanon Maidee | ✅ |
+| Slip upload UI on booking detail | Chatchapon Malayapun | Itthipat Wongnoppawich | ✅ |
+| Call upload endpoint + update status | Methasit Phanawongwat | Natthadon Chairuangsirikul | ✅ |
+| Confirmation after upload in admin UI | Wachiraphan Tisanthia | Itthipat Wongnoppawich | ✅ |
+
+### US 4-3: Admin Create Promotion Codes
+| Task | Volunteer 1 | Volunteer 2 | Status |
+|------|-------------|-------------|--------|
+| POST /promotions (admin create) | Natthadon Chairuangsirikul | Teerapat Sardsud | ✅ |
+| DELETE /promotions/:id (admin deactivate) | Sarana Thanadeecharoenchok | Anupat Tubsri | ✅ |
+| GET /promotions (admin list) | Teerapat Sardsud | Atichat Saengmani | ✅ |
+| GET /promotions (admin list) | Anupat Tubsri | Chatchapon Malayapun | ✅ |
+| Create promotion form in admin | Methasit Phanawongwat | Natchanon Maidee | ✅ |
+| Delete button per promotion + confirmation | Natthadon Chairuangsirikul | Sarana Thanadeecharoenchok | ✅ |
+
+### US 4-4: Admin Verify Payment Slip
+| Task | Volunteer 1 | Volunteer 2 | Status |
+|------|-------------|-------------|--------|
+| PUT /reservations/:id/verify (approve/reject) | Sarana Thanadeecharoenchok | Teerapat Sardsud | ✅ |
+| Pending payment list in admin bookings | Chatchapon Malayapun | Natthadon Chairuangsirikul | ✅ |
+| Slip thumbnail + Approve/Reject buttons | Wachiraphan Tisanthia | Anupat Tubsri | ✅ |
+| On approval: status → Confirmed in both UIs | Chatchapon Malayapun | Methasit Phanawongwat | ✅ |
