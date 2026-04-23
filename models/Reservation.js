@@ -50,6 +50,14 @@ const ReservationSchema = new mongoose.Schema({
         enum: ['none', 'waiting_verification', 'approved', 'rejected'],
         default: 'none'
     },
+    qrToken: {
+        type: String,
+        default: null
+    },
+    qrActive: {
+        type: Boolean,
+        default: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

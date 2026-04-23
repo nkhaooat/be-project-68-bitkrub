@@ -1,6 +1,7 @@
 const Reservation = require('../models/Reservation');
 const MassageShop = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
+const crypto = require('crypto');
 
 // @desc    Get all reservations (admin) or user's reservations
 // @route   GET /api/v1/reservations
@@ -207,7 +208,18 @@ exports.createReservation = async (req, res, next) => {
             req.body.discountAmount = 0;
         }
 
+        // Generate QR token for the reservation
+        req.body.qrToken = crypto.randomBytes(16).toString('hex');
+        req.body.qrActive = true;
+
         const reservation = await Reservation.create(req.body);
+
+        // Send confirmation email with QR code (fire-and-forget)
+        if (process.env.BREVO_API_KEY) {
+            sendConfirmationEmail(reservation).catch(err =>
+                console.error('[email] Failed to send confirmation:', err.message)
+            );
+        }
 
         res.status(201).json({
             success: true,
@@ -260,6 +272,14 @@ exports.updateReservation = async (req, res, next) => {
             { path: 'user', select: 'name email telephone' }
         ]);
 
+        // US 6-5: Send review request email when status changes to completed
+        if (req.body.status === 'completed' && reservation.status === 'completed' && process.env.BREVO_API_KEY) {
+            const { sendReviewRequestEmail } = require('../controllers/reservations');
+            sendReviewRequestEmail(reservation).catch(err =>
+                console.error('[email] Failed to send review request:', err.message)
+            );
+        }
+
         res.status(200).json({ success: true, data: reservation });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -300,11 +320,19 @@ exports.deleteReservation = async (req, res, next) => {
 
         // Soft delete: update status to cancelled instead of deleting
         reservation.status = 'cancelled';
+        reservation.qrActive = false;
         await reservation.save();
+
+        // Send cancellation email (fire-and-forget)
+        if (process.env.BREVO_API_KEY) {
+            sendCancellationEmail(reservation).catch(err =>
+                console.error('[email] Failed to send cancellation:', err.message)
+            );
+        }
 
         res.status(200).json({ 
             success: true, 
-            message: 'Reservation cancelled successfully',
+            message: 'Reservation cancelled successfully. A cancellation confirmation has been sent to your email. Your QR code is now void.',
             data: reservation 
         });
     } catch (err) {
@@ -387,3 +415,201 @@ exports.verifySlip = async (req, res, next) => {
         res.status(400).json({ success: false, message: err.message });
     }
 };
+
+// @desc    Verify QR code token
+// @route   GET /api/v1/qr/verify/:token
+// @access  Private/Admin
+exports.verifyQR = async (req, res, next) => {
+    try {
+        const reservation = await Reservation.findOne({ qrToken: req.params.token })
+            .populate([
+                { path: 'shop', select: 'name address' },
+                { path: 'service', select: 'name duration price' },
+                { path: 'user', select: 'name email telephone' }
+            ]);
+
+        if (!reservation) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invalid QR code — reservation not found' 
+            });
+        }
+
+        if (!reservation.qrActive) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'QR code is no longer valid' 
+            });
+        }
+
+        if (reservation.status === 'cancelled') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'This reservation has been cancelled' 
+            });
+        }
+
+        // Check if reservation date has passed (expired)
+        const now = new Date();
+        const resvDate = new Date(reservation.resvDate);
+        const service = reservation.service;
+        const durationMs = (service?.duration || 60) * 60 * 1000;
+        const resvEnd = new Date(resvDate.getTime() + durationMs);
+
+        if (now > resvEnd) {
+            reservation.qrActive = false;
+            await reservation.save();
+            return res.status(400).json({ 
+                success: false, 
+                message: 'QR code is no longer valid — reservation date has passed' 
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            reservationId: reservation._id,
+            data: reservation,
+            message: 'QR code verified successfully'
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Email helpers (Brevo)
+// ---------------------------------------------------------------------------
+const Sib = require('sib-api-v3-sdk');
+const QRCode = require('qrcode');
+
+function getBrevoClient() {
+    const defaultClient = Sib.ApiClient.instance;
+    defaultClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+    return new Sib.TransactionalEmailsApi();
+}
+
+async function generateQRDataURL(token) {
+    const verifyUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/api/v1/qr/verify/${token}`;
+    const qrBuffer = await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
+    return `data:image/png;base64,${qrBuffer.toString('base64')}`;
+}
+
+async function sendConfirmationEmail(reservation) {
+    if (!reservation.populated?.('shop')) {
+        await reservation.populate([
+            { path: 'shop', select: 'name address' },
+            { path: 'service', select: 'name duration price' },
+            { path: 'user', select: 'name email' }
+        ]);
+    }
+    const shop = reservation.shop;
+    const service = reservation.service;
+    const user = reservation.user;
+    const date = new Date(reservation.resvDate).toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const time = new Date(reservation.resvDate).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit'
+    });
+
+    const qrDataUrl = await generateQRDataURL(reservation.qrToken);
+
+    const api = getBrevoClient();
+    const sendSmtpEmail = new Sib.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
+    sendSmtpEmail.subject = 'Booking Confirmed — Dungeon Inn';
+    sendSmtpEmail.htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #E57A00;">Dungeon Inn — Booking Confirmed</h2>
+            <p>Hi ${user.name},</p>
+            <p>Your reservation has been created successfully!</p>
+            <table style="border-collapse: collapse; margin: 16px 0;">
+                <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${time}</td></tr>
+            </table>
+            <p>Show this QR code at the shop:</p>
+            <img src="${qrDataUrl}" alt="QR Code" style="width: 200px; height: 200px;" />
+            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
+        </div>
+    `;
+
+    await api.sendTransacEmail(sendSmtpEmail);
+    console.log(`[email] Confirmation sent to ${user.email}`);
+}
+
+async function sendCancellationEmail(reservation) {
+    if (!reservation.populated?.('shop')) {
+        await reservation.populate([
+            { path: 'shop', select: 'name address' },
+            { path: 'service', select: 'name duration price' },
+            { path: 'user', select: 'name email' }
+        ]);
+    }
+    const user = reservation.user;
+    const shop = reservation.shop;
+    const service = reservation.service;
+    const date = new Date(reservation.resvDate).toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const api = getBrevoClient();
+    const sendSmtpEmail = new Sib.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
+    sendSmtpEmail.subject = 'Booking Cancelled — Dungeon Inn';
+    sendSmtpEmail.htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #E57A00;">Dungeon Inn — Booking Cancelled</h2>
+            <p>Hi ${user.name},</p>
+            <p>Your reservation has been cancelled.</p>
+            <table style="border-collapse: collapse; margin: 16px 0;">
+                <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
+            </table>
+            <p>Your QR code is now void and cannot be used.</p>
+            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
+        </div>
+    `;
+
+    await api.sendTransacEmail(sendSmtpEmail);
+    console.log(`[email] Cancellation sent to ${user.email}`);
+}
+
+async function sendReviewRequestEmail(reservation) {
+    if (!reservation.populated?.('shop')) {
+        await reservation.populate([
+            { path: 'shop', select: 'name' },
+            { path: 'service', select: 'name' },
+            { path: 'user', select: 'name email' }
+        ]);
+    }
+    const user = reservation.user;
+    const shop = reservation.shop;
+    const reviewUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/mybookings`;
+
+    const api = getBrevoClient();
+    const sendSmtpEmail = new Sib.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
+    sendSmtpEmail.subject = 'How was your visit? — Dungeon Inn';
+    sendSmtpEmail.htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #E57A00;">Dungeon Inn — How was your visit?</h2>
+            <p>Hi ${user.name},</p>
+            <p>Your appointment at <strong>${shop?.name || 'the shop'}</strong> has been completed.</p>
+            <p>We'd love to hear your feedback! Leave a review to help others find great massage services.</p>
+            <a href="${reviewUrl}" style="display: inline-block; background: #E57A00; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Leave a Review</a>
+            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
+        </div>
+    `;
+
+    await api.sendTransacEmail(sendSmtpEmail);
+    console.log(`[email] Review request sent to ${user.email}`);
+}
+
+module.exports = exports;
+module.exports.sendReviewRequestEmail = sendReviewRequestEmail;

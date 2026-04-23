@@ -14,6 +14,7 @@ const reservations = require('./routes/reservations');
 const chat = require('./routes/chat');
 const reviews = require('./routes/reviews');
 const promotions = require('./routes/promotions');
+const qr = require('./routes/qr');
 
 const app = express();
 
@@ -99,6 +100,37 @@ function scheduleMidnightRebuild() {
 // Start the midnight cron after DB connects (give it 5s)
 setTimeout(() => scheduleMidnightRebuild(), 5000);
 
+// ---------------------------------------------------------------------------
+// Hourly cron: invalidate expired QR codes (EPIC 6: US 6-8)
+// ---------------------------------------------------------------------------
+setInterval(async () => {
+    try {
+        const now = new Date();
+        // Find reservations where qrActive is true but date has passed + duration
+        const expired = await Reservation.find({
+            qrActive: true,
+            status: { $ne: 'cancelled' }
+        }).populate('service', 'duration');
+
+        let voided = 0;
+        for (const res of expired) {
+            const resvDate = new Date(res.resvDate);
+            const durationMs = (res.service?.duration || 60) * 60 * 1000;
+            const resvEnd = new Date(resvDate.getTime() + durationMs);
+            if (now > resvEnd) {
+                res.qrActive = false;
+                await res.save();
+                voided++;
+            }
+        }
+        if (voided > 0) {
+            console.log(`[cron:qr] Voided ${voided} expired QR code(s)`);
+        }
+    } catch (err) {
+        console.error('[cron:qr] Error voiding expired QR codes:', err.message);
+    }
+}, 60 * 60 * 1000); // every hour
+
 // Mount routers
 app.use('/api/v1/shops', shops);
 app.use('/api/v1/services', services);
@@ -107,6 +139,7 @@ app.use('/api/v1/reservations', reservations);
 app.use('/api/v1/chat', chat);
 app.use('/api/v1/reviews', reviews);
 app.use('/api/v1/promotions', promotions);
+app.use('/api/v1/qr', qr);
 
 // API root route
 app.get('/', (req, res) => {
