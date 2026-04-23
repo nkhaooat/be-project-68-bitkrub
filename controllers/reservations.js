@@ -488,10 +488,9 @@ function getBrevoClient() {
     return new Sib.TransactionalEmailsApi();
 }
 
-async function generateQRDataURL(token) {
+async function generateQRBuffer(token) {
     const verifyUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/api/v1/qr/verify/${token}`;
-    const qrBuffer = await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
-    return `data:image/png;base64,${qrBuffer.toString('base64')}`;
+    return await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
 }
 
 async function sendConfirmationEmail(reservation) {
@@ -512,7 +511,7 @@ async function sendConfirmationEmail(reservation) {
         hour: '2-digit', minute: '2-digit'
     });
 
-    const qrDataUrl = await generateQRDataURL(reservation.qrToken);
+    const qrBuffer = await generateQRBuffer(reservation.qrToken);
 
     const api = getBrevoClient();
     const sendSmtpEmail = new Sib.SendSmtpEmail();
@@ -531,10 +530,16 @@ async function sendConfirmationEmail(reservation) {
                 <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${time}</td></tr>
             </table>
             <p>Show this QR code at the shop:</p>
-            <img src="${qrDataUrl}" alt="QR Code" style="width: 200px; height: 200px;" />
+            <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px;" />
             <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
         </div>
     `;
+    sendSmtpEmail.attachment = [{
+        name: 'qrcode.png',
+        content: qrBuffer.toString('base64'),
+        contentType: 'image/png',
+        contentId: 'qrcode'
+    }];
 
     await api.sendTransacEmail(sendSmtpEmail);
     console.log(`[email] Confirmation sent to ${user.email}`);
