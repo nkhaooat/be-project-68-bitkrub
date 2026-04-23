@@ -435,6 +435,14 @@ exports.verifyQR = async (req, res, next) => {
             });
         }
 
+        // Check ownership: only the reservation owner or admin can view
+        if (req.user.role !== 'admin' && reservation.user._id.toString() !== req.user.id) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Not authorized — this QR code belongs to another user' 
+            });
+        }
+
         if (!reservation.qrActive) {
             return res.status(400).json({ 
                 success: false, 

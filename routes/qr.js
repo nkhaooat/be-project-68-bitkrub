@@ -5,7 +5,7 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 // @route   GET /api/v1/qr/verify/:token
-// @access  Private/Admin
-router.get('/verify/:token', protect, authorize('admin'), verifyQR);
+// @access  Private (owner or admin)
+router.get('/verify/:token', protect, verifyQR);
 
 module.exports = router;
