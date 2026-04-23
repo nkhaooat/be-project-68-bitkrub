@@ -4,6 +4,10 @@ const {
   getMerchantDashboard,
   updateMerchantShop,
   getMerchantReservations,
+  getMerchantServices,
+  createMerchantService,
+  updateMerchantService,
+  deleteMerchantService,
   scanQR
 } = require('../controllers/merchant');
 
@@ -18,10 +22,16 @@ router.get('/dashboard', getMerchantDashboard);
 // Update own shop
 router.put('/shop', updateMerchantShop);
 
+// Manage own services
+router.get('/services', getMerchantServices);
+router.post('/services', createMerchantService);
+router.put('/services/:id', updateMerchantService);
+router.delete('/services/:id', deleteMerchantService);
+
 // View reservations for own shop
 router.get('/reservations', getMerchantReservations);
 
-// US 7-6: Scan QR code
+// Scan QR code
 router.post('/qr/scan', scanQR);
 
 module.exports = router;

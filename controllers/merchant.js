@@ -88,6 +88,77 @@ exports.getMerchantReservations = async (req, res, next) => {
   }
 };
 
+// @desc    Get all services for merchant's own shop
+// @route   GET /api/v1/merchant/services
+// @access  Private (approved merchant)
+exports.getMerchantServices = async (req, res, next) => {
+  try {
+    const merchant = await User.findById(req.user.id);
+    const services = await MassageService.find({ shop: merchant.merchantShop }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, count: services.length, data: services });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Create a service for merchant's own shop
+// @route   POST /api/v1/merchant/services
+// @access  Private (approved merchant)
+exports.createMerchantService = async (req, res, next) => {
+  try {
+    const merchant = await User.findById(req.user.id);
+    const service = await MassageService.create({
+      ...req.body,
+      shop: merchant.merchantShop
+    });
+    res.status(201).json({ success: true, data: service });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+};
+
+// @desc    Update a service in merchant's own shop
+// @route   PUT /api/v1/merchant/services/:id
+// @access  Private (approved merchant)
+exports.updateMerchantService = async (req, res, next) => {
+  try {
+    const merchant = await User.findById(req.user.id);
+    let service = await MassageService.findById(req.params.id);
+    if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+    if (service.shop.toString() !== merchant.merchantShop.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this service' });
+    }
+    service = await MassageService.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, runValidators: true
+    });
+    res.status(200).json({ success: true, data: service });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+};
+
+// @desc    Delete a service in merchant's own shop
+// @route   DELETE /api/v1/merchant/services/:id
+// @access  Private (approved merchant)
+exports.deleteMerchantService = async (req, res, next) => {
+  try {
+    const merchant = await User.findById(req.user.id);
+    const service = await MassageService.findById(req.params.id);
+    if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+    if (service.shop.toString() !== merchant.merchantShop.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this service' });
+    }
+    await service.deleteOne();
+    res.status(200).json({ success: true, data: {} });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Scan QR code — verify and confirm reservation
 // @route   POST /api/v1/merchant/qr/scan
 // @access  Private (approved merchant)
