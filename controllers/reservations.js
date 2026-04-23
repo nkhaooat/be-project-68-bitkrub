@@ -516,7 +516,7 @@ async function sendConfirmationEmail(reservation) {
 
     const api = getBrevoClient();
     const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
     sendSmtpEmail.to = [{ email: user.email, name: user.name }];
     sendSmtpEmail.subject = 'Booking Confirmed — Dungeon Inn';
     sendSmtpEmail.htmlContent = `
@@ -557,7 +557,7 @@ async function sendCancellationEmail(reservation) {
 
     const api = getBrevoClient();
     const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
     sendSmtpEmail.to = [{ email: user.email, name: user.name }];
     sendSmtpEmail.subject = 'Booking Cancelled — Dungeon Inn';
     sendSmtpEmail.htmlContent = `
@@ -593,7 +593,7 @@ async function sendReviewRequestEmail(reservation) {
 
     const api = getBrevoClient();
     const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_SENDER_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
     sendSmtpEmail.to = [{ email: user.email, name: user.name }];
     sendSmtpEmail.subject = 'How was your visit? — Dungeon Inn';
     sendSmtpEmail.htmlContent = `
