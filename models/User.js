@@ -22,8 +22,19 @@ const UserSchema=new mongoose.Schema({
     },
     role: {
         type:String,
-        enum: ['user','admin'],
+        enum: ['user','admin','merchant'],
         default: 'user'
+    },
+    merchantStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: undefined
+    },
+    merchantShop: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MassageShop',
+        default: undefined,
+        index: true
     },
     password: {
         type:String,

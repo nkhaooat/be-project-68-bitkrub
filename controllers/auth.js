@@ -78,7 +78,7 @@ exports.login = async (req, res, next) => {
 //@access   Private
 exports.getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).populate('merchantShop', 'name address');
     res.status(200).json({
       success: true,
       data: user
@@ -323,5 +323,73 @@ exports.changePassword = async (req, res, next) => {
   } catch (err) {
     console.error('changePassword error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+//@desc     Register Merchant
+//@route    POST /api/v1/auth/register/merchant
+//@access   Public
+exports.registerMerchant = async (req, res, next) => {
+  try {
+    const { name, email, telephone, password, shopId } = req.body;
+
+    if (!shopId) {
+      return res.status(400).json({ success: false, message: 'Shop ID is required' });
+    }
+
+    const MassageShop = require('../models/MassageShop');
+    const shop = await MassageShop.findById(shopId);
+    if (!shop) {
+      return res.status(404).json({ success: false, message: 'Shop not found' });
+    }
+
+    // Check if shop already has a merchant
+    const existingMerchant = await User.findOne({ merchantShop: shopId, role: 'merchant' });
+    if (existingMerchant) {
+      return res.status(400).json({ success: false, message: 'This shop already has a merchant account' });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      telephone,
+      password,
+      role: 'merchant',
+      merchantStatus: 'pending',
+      merchantShop: shopId
+    });
+
+    // Fire-and-forget: notify admin
+    try {
+      const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
+      await brevo.transactionalEmails.sendTransacEmail({
+        to: [{ email: process.env.BREVO_FROM_EMAIL, name: 'Dungeon Inn Admin' }],
+        sender: { email: process.env.BREVO_FROM_EMAIL, name: process.env.BREVO_FROM_NAME || 'Dungeon Inn' },
+        subject: '📋 New Merchant Registration Request',
+        htmlContent: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#1A1A1A;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1A1A1A;padding:40px 20px;"><tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#2B2B2B;border:1px solid #403A36;border-radius:12px;overflow:hidden;">
+<tr><td style="background:#2C1E18;padding:32px 40px;text-align:center;border-bottom:2px solid #E57A00;"><h1 style="margin:0;font-size:28px;font-weight:800;color:#E57A00;letter-spacing:1px;">⚔️ DUNGEON INN</h1><p style="margin:8px 0 0;font-size:13px;color:#8A8177;letter-spacing:2px;text-transform:uppercase;">Merchant Registration</p></td></tr>
+<tr><td style="padding:40px;">
+<h2 style="margin:0 0 16px;font-size:22px;color:#F0E5D8;">New Merchant Request</h2>
+<p style="margin:0 0 8px;font-size:15px;color:#A88C6B;"><strong style="color:#D4CFC6;">Name:</strong> ${name}</p>
+<p style="margin:0 0 8px;font-size:15px;color:#A88C6B;"><strong style="color:#D4CFC6;">Email:</strong> ${email}</p>
+<p style="margin:0 0 8px;font-size:15px;color:#A88C6B;"><strong style="color:#D4CFC6;">Shop:</strong> ${shop.name}</p>
+<p style="margin:0 0 24px;font-size:15px;color:#A88C6B;"><strong style="color:#D4CFC6;">Status:</strong> <span style="color:#E57A00;">Pending Approval</span></p>
+<p style="margin:0;font-size:13px;color:#8A8177;">Please review this request in the admin dashboard.</p>
+</td></tr>
+<tr><td style="background:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;"><p style="margin:0;font-size:12px;color:#5A544E;">© 2026 Dungeon Inn</p></td></tr>
+</table></td></tr></table></body></html>`
+      });
+    } catch (e) {
+      console.error('[Brevo] admin notify error:', e?.message || e);
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (err) {
+    console.error(err.stack);
+    res.status(400).json({ success: false, message: err.message || 'Registration failed' });
   }
 };

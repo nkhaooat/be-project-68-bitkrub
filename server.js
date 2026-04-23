@@ -15,6 +15,8 @@ const chat = require('./routes/chat');
 const reviews = require('./routes/reviews');
 const promotions = require('./routes/promotions');
 const qr = require('./routes/qr');
+const merchants = require('./routes/merchants');
+const merchant = require('./routes/merchant');
 
 const app = express();
 
@@ -140,6 +142,8 @@ app.use('/api/v1/chat', chat);
 app.use('/api/v1/reviews', reviews);
 app.use('/api/v1/promotions', promotions);
 app.use('/api/v1/qr', qr);
+app.use('/api/v1/admin/merchants', merchants);
+app.use('/api/v1/merchant', merchant);
 
 // API root route
 app.get('/', (req, res) => {
