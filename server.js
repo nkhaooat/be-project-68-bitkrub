@@ -13,11 +13,15 @@ const auth = require('./routes/auth');
 const reservations = require('./routes/reservations');
 const chat = require('./routes/chat');
 const reviews = require('./routes/reviews');
+const promotions = require('./routes/promotions');
 
 const app = express();
 
 //Body parser
 app.use(express.json());
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 //Cookie parser
 app.use(cookieParser());
@@ -102,6 +106,7 @@ app.use('/api/v1/auth', auth);
 app.use('/api/v1/reservations', reservations);
 app.use('/api/v1/chat', chat);
 app.use('/api/v1/reviews', reviews);
+app.use('/api/v1/promotions', promotions);
 
 // API root route
 app.get('/', (req, res) => {

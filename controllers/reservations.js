@@ -163,6 +163,50 @@ exports.createReservation = async (req, res, next) => {
         // Set the user from auth token
         req.body.user = req.user.id;
 
+        // Apply promotion code if provided (EPIC 4: US 4-1)
+        const Promotion = require('../models/Promotion');
+        if (req.body.promotionCode) {
+            const promotion = await Promotion.findOne({
+                code: req.body.promotionCode.toUpperCase().trim(),
+                isActive: true
+            });
+
+            if (!promotion) {
+                return res.status(400).json({ success: false, message: 'Invalid promotion code' });
+            }
+
+            if (promotion.expiresAt && new Date() > promotion.expiresAt) {
+                return res.status(400).json({ success: false, message: 'This promotion code has expired' });
+            }
+
+            if (promotion.usageLimit !== null && promotion.usedCount >= promotion.usageLimit) {
+                return res.status(400).json({ success: false, message: 'This promotion code has reached its usage limit' });
+            }
+
+            // Calculate discount
+            const originalPrice = service.price;
+            let discountAmount = 0;
+            if (promotion.discountType === 'flat') {
+                discountAmount = Math.min(promotion.discountValue, originalPrice);
+            } else if (promotion.discountType === 'percentage') {
+                discountAmount = Math.round((originalPrice * promotion.discountValue / 100) * 100) / 100;
+                discountAmount = Math.min(discountAmount, originalPrice);
+            }
+
+            req.body.originalPrice = originalPrice;
+            req.body.discountAmount = discountAmount;
+            req.body.finalPrice = Math.max(0, originalPrice - discountAmount);
+            req.body.promotionCode = promotion.code;
+
+            // Increment usage count
+            promotion.usedCount += 1;
+            await promotion.save();
+        } else {
+            req.body.originalPrice = service.price;
+            req.body.finalPrice = service.price;
+            req.body.discountAmount = 0;
+        }
+
         const reservation = await Reservation.create(req.body);
 
         res.status(201).json({
@@ -263,6 +307,82 @@ exports.deleteReservation = async (req, res, next) => {
             message: 'Reservation cancelled successfully',
             data: reservation 
         });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+// @desc    Upload payment slip
+// @route   POST /api/v1/reservations/:id/slip
+// @access  Private
+exports.uploadSlip = async (req, res, next) => {
+    try {
+        const reservation = await Reservation.findById(req.params.id);
+
+        if (!reservation) {
+            return res.status(404).json({ success: false, message: 'Reservation not found' });
+        }
+
+        if (reservation.user.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload a file' });
+        }
+
+        reservation.slipImageUrl = `/uploads/slips/${req.file.filename}`;
+        reservation.paymentStatus = 'waiting_verification';
+        await reservation.save();
+
+        const updated = await Reservation.findById(reservation._id).populate([
+            { path: 'shop', select: 'name address location tel openTime closeTime' },
+            { path: 'service', select: 'name area duration oil price sessions' },
+            { path: 'user', select: 'name email telephone' }
+        ]);
+
+        res.status(200).json({ success: true, data: updated });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Verify payment slip (admin)
+// @route   PUT /api/v1/reservations/:id/verify
+// @access  Private/Admin
+exports.verifySlip = async (req, res, next) => {
+    try {
+        const { action } = req.body; // 'approve' or 'reject'
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ success: false, message: 'Action must be approve or reject' });
+        }
+
+        const reservation = await Reservation.findById(req.params.id);
+
+        if (!reservation) {
+            return res.status(404).json({ success: false, message: 'Reservation not found' });
+        }
+
+        if (reservation.paymentStatus !== 'waiting_verification') {
+            return res.status(400).json({ success: false, message: 'Reservation is not waiting for verification' });
+        }
+
+        if (action === 'approve') {
+            reservation.paymentStatus = 'approved';
+            reservation.status = 'confirmed';
+        } else {
+            reservation.paymentStatus = 'rejected';
+        }
+
+        await reservation.save();
+
+        const updated = await Reservation.findById(reservation._id).populate([
+            { path: 'shop', select: 'name address location tel openTime closeTime' },
+            { path: 'service', select: 'name area duration oil price sessions' },
+            { path: 'user', select: 'name email telephone' }
+        ]);
+
+        res.status(200).json({ success: true, data: updated });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }
