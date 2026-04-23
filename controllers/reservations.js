@@ -480,11 +480,9 @@ exports.verifyQR = async (req, res, next) => {
 // Email helpers (Brevo) — uses same BrevoClient as auth.js
 // ---------------------------------------------------------------------------
 const { BrevoClient } = require('@getbrevo/brevo');
-const QRCode = require('qrcode');
 
-async function generateQRBuffer(token) {
-    const verifyUrl = `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/api/v1/qr/verify/${token}`;
-    return await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
+async function getQRPageUrl(token) {
+    return `${process.env.FRONTEND_URL || 'https://fe-project-68-addressme.vercel.app'}/qr/${token}`;
 }
 
 async function sendConfirmationEmail(reservation) {
@@ -505,8 +503,7 @@ async function sendConfirmationEmail(reservation) {
         hour: '2-digit', minute: '2-digit'
     });
 
-    const qrBuffer = await generateQRBuffer(reservation.qrToken);
-    const qrBase64 = qrBuffer.toString('base64');
+    const qrPageUrl = await getQRPageUrl(reservation.qrToken);
 
     const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY });
     await brevo.transactionalEmails.sendTransacEmail({
@@ -538,14 +535,17 @@ async function sendConfirmationEmail(reservation) {
             <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">📅 Date</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${date}</td></tr>
             <tr><td style="padding:12px 16px;color:#8A8177;font-size:13px;">🕐 Time</td><td style="padding:12px 16px;color:#D4CFC6;font-size:15px;">${time}</td></tr>
           </table>
-          <p style="margin:24px 0 8px;font-size:15px;color:#A88C6B;line-height:1.6;">
-            📱 Your QR code is attached to this email. Show it at the shop to verify your booking.
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+            <tr><td align="center" style="padding:24px 0 8px;">
+              <a href="${qrPageUrl}"
+                 style="display:inline-block;padding:14px 36px;background-color:#E57A00;color:#1A110A;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.5px;">
+                📱 View QR Code
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:8px 0 0;font-size:13px;color:#8A8177;line-height:1.6;">
+            Show the QR code at the shop to verify your booking.
           </p>
-          <div style="border-top:1px solid #403A36;padding-top:24px;margin-top:24px;">
-            <p style="margin:0;font-size:13px;color:#8A8177;line-height:1.6;">
-              💡 You can also view and download your QR code from the My Bookings page.
-            </p>
-          </div>
         </td></tr>
         <!-- Footer -->
         <tr><td style="background-color:#1A1A1A;padding:20px 40px;text-align:center;border-top:1px solid #403A36;">
@@ -559,10 +559,7 @@ async function sendConfirmationEmail(reservation) {
   </table>
 </body>
 </html>`,
-        attachment: [{
-            name: 'dungeon-inn-qrcode.png',
-            content: qrBase64
-        }]
+
     });
     console.log(`[email] Confirmation sent to ${user.email}`);
 }
