@@ -493,6 +493,24 @@ async function generateQRBuffer(token) {
     return await QRCode.toBuffer(verifyUrl, { type: 'png', width: 200, margin: 1 });
 }
 
+async function sendBrevoEmail(to, subject, htmlContent, inlineImage) {
+    const Sib = require('sib-api-v3-sdk');
+    const defaultClient = Sib.ApiClient.instance;
+    defaultClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+    const api = new Sib.TransactionalEmailsApi();
+
+    const sendSmtpEmail = new Sib.SendSmtpEmail();
+    sendSmtpEmail.sender = { name: process.env.BREVO_FROM_NAME || 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
+    sendSmtpEmail.to = to;
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = htmlContent;
+    if (inlineImage) {
+        sendSmtpEmail.attachment = [inlineImage];
+    }
+
+    await api.sendTransacEmail(sendSmtpEmail);
+}
+
 async function sendConfirmationEmail(reservation) {
     if (!reservation.populated?.('shop')) {
         await reservation.populate([
@@ -512,36 +530,47 @@ async function sendConfirmationEmail(reservation) {
     });
 
     const qrBuffer = await generateQRBuffer(reservation.qrToken);
+    const qrBase64 = qrBuffer.toString('base64');
 
-    const api = getBrevoClient();
-    const sendSmtpEmail = new Sib.SendSmtpEmail();
-    sendSmtpEmail.sender = { name: 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL || 'noreply@dungeoninn.com' };
-    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
-    sendSmtpEmail.subject = 'Booking Confirmed — Dungeon Inn';
-    sendSmtpEmail.htmlContent = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #E57A00;">Dungeon Inn — Booking Confirmed</h2>
-            <p>Hi ${user.name},</p>
-            <p>Your reservation has been created successfully!</p>
-            <table style="border-collapse: collapse; margin: 16px 0;">
-                <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${time}</td></tr>
-            </table>
-            <p>Show this QR code at the shop:</p>
-            <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px;" />
-            <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
-        </div>
-    `;
-    sendSmtpEmail.attachment = [{
-        name: 'qrcode.png',
-        content: qrBuffer.toString('base64'),
-        contentType: 'image/png',
-        contentId: 'qrcode'
-    }];
+    // Use Brevo REST API directly for inline image support
+    const fetch = require('node-fetch');
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'api-key': process.env.BREVO_API_KEY
+        },
+        body: JSON.stringify({
+            sender: { name: process.env.BREVO_FROM_NAME || 'Dungeon Inn', email: process.env.BREVO_FROM_EMAIL },
+            to: [{ email: user.email, name: user.name }],
+            subject: 'Booking Confirmed — Dungeon Inn',
+            htmlContent: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #E57A00;">Dungeon Inn — Booking Confirmed</h2>
+                <p>Hi ${user.name},</p>
+                <p>Your reservation has been created successfully!</p>
+                <table style="border-collapse: collapse; margin: 16px 0;">
+                    <tr><td style="padding: 8px; font-weight: bold;">Shop:</td><td style="padding: 8px;">${shop?.name || 'N/A'}</td></tr>
+                    <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${service?.name || 'N/A'}</td></tr>
+                    <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${date}</td></tr>
+                    <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${time}</td></tr>
+                </table>
+                <p>Show this QR code at the shop:</p>
+                <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px;" />
+                <p style="color: #888; font-size: 12px; margin-top: 20px;">Dungeon Inn — Massage Booking Platform</p>
+            </div>`,
+            attachment: [{
+                name: 'qrcode.png',
+                content: qrBase64,
+                contentType: 'image/png',
+                contentId: 'qrcode'
+            }]
+        })
+    });
 
-    await api.sendTransacEmail(sendSmtpEmail);
+    if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(`Brevo API ${resp.status}: ${err}`);
+    }
     console.log(`[email] Confirmation sent to ${user.email}`);
 }
 
