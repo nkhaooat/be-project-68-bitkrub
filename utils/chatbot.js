@@ -752,11 +752,3 @@ function resetVectorStore() {
 }
 
 module.exports = { buildVectorStore, chat, resetVectorStore };
-
-// --- Auto-rebuild vector store every 30 minutes to pick up new shops/services ---
-const REBUILD_INTERVAL_MS = 30 * 60 * 1000;
-setInterval(() => {
-  console.log('[chatbot] Auto-rebuilding vector store...');
-  resetVectorStore();
-  buildVectorStore().catch(err => console.error('[chatbot] Auto-rebuild failed:', err.message));
-}, REBUILD_INTERVAL_MS);
