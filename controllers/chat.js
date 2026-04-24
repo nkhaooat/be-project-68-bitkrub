@@ -3,6 +3,7 @@ const Reservation = require('../models/Reservation');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../middleware/asyncHandler');
+const { fetchWeather } = require('../services/weather');
 
 /**
  * POST /api/v1/chat
@@ -11,11 +12,14 @@ const asyncHandler = require('../middleware/asyncHandler');
  * Returns: { success: true, reply: string }
  */
 exports.chatWithBot = asyncHandler(async (req, res) => {
-    const { message, history = [], weather = null, sessionId = null } = req.body;
+    const { message, history = [], lat = null, lng = null, sessionId = null } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ success: false, message: 'message is required' });
     }
+
+    // --- Fetch weather server-side ---
+    const weather = await fetchWeather({ lat, lng });
 
     // --- Optional auth: extract user from Bearer token if present ---
     let userContext = null;
@@ -127,11 +131,14 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
  *   {"type":"done"}                   — stream complete
  */
 exports.chatStreamBot = asyncHandler(async (req, res) => {
-    const { message, history = [], weather = null, sessionId = null } = req.body;
+    const { message, history = [], lat = null, lng = null, sessionId = null } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ success: false, message: 'message is required' });
     }
+
+    // --- Fetch weather server-side ---
+    const weather = await fetchWeather({ lat, lng });
 
     // --- Same auth extraction as chatWithBot ---
     let userContext = null;
