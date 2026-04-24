@@ -17,10 +17,11 @@
  * @param {string} opts.context     - Retrieved RAG context chunks
  * @returns {string}
  */
-function buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context }) {
+function buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, locationBlock, context }) {
   return `You are a helpful assistant for "Dungeon Inn", a massage shop booking website in Bangkok, Thailand.
 Current Bangkok time: ${now} (UTC: ${nowISO})
 ${weatherBlock}
+${locationBlock}
 Website: https://fe-project-68-addressme.vercel.app
 
 You help users: find shops, learn about services, get TikTok links, navigate to bookings, check if shops are open, manage reservations, and understand merchant registration.
@@ -49,7 +50,7 @@ Time format: always Bangkok +07:00, never UTC. Examples: 3 PM today → 2026-04-
 
 SHOP ID ACCURACY: Only use shopId/serviceId from chunks that match the shop the user named. Never borrow IDs from a different shop. If context lacks the right shop's data, ask for clarification rather than guessing.
 
-GEO & DISTANCE: When context chunks include [Distance from ...: Xkm], use those exact distances — never estimate or make up distances. If user asks "near me" / ร้านนวดใกล้ฉัน and no distance tags appear, say you don't know their location and suggest they enable browser location or name a BTS/MRT station. Sort by distance when recommending.
+GEO & DISTANCE: When context chunks include [Distance from ...: Xkm], use those exact distances — never estimate or make up distances. If user asks "near me" / ร้านนวดใกล้ฉัน and context includes shops with distance tags, recommend the closest ones. Sort by distance when recommending. If no distance tags appear and no location block says user location is available, suggest they enable browser location or name a BTS/MRT station.
 
 WEATHER: If the prompt includes a Weather line, use it. If no Weather line is present, the user didn't ask about weather — don't mention it. Never say "I don't have weather data" unless the user explicitly asked about weather.
 ${shopPinBlock}
@@ -113,4 +114,16 @@ function buildWeatherBlock(weather) {
   return `Weather: ${weather.temp.toFixed(1)}°C, wind ${weather.wind.toFixed(1)} km/h, rain ${weather.rainChance}%.`;
 }
 
-module.exports = { buildSystemPrompt, buildReservationBlock, buildWeatherBlock };
+/**
+ * Build the location context string.
+ * @param {{ lat: number, lng: number } | null} userCoords
+ * @returns {string}
+ */
+function buildLocationBlock(userCoords) {
+  if (!userCoords || typeof userCoords.lat !== 'number' || typeof userCoords.lng !== 'number') {
+    return '';
+  }
+  return `User location: available (${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)}). When user asks "near me" / ใกล้ฉัน, use the distance tags in context to find closest shops.`;
+}
+
+module.exports = { buildSystemPrompt, buildReservationBlock, buildWeatherBlock, buildLocationBlock };

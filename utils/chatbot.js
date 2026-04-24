@@ -16,7 +16,7 @@ const MassageShop = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
 const { ensureThaiTranslation } = require('../services/translation');
 const { haversineKm, detectGeoAnchor } = require('./geo/chatbotGeo');
-const { buildSystemPrompt, buildReservationBlock, buildWeatherBlock } = require('./prompts/chatbot-system');
+const { buildSystemPrompt, buildReservationBlock, buildWeatherBlock, buildLocationBlock } = require('./prompts/chatbot-system');
 
 // ---------------------------------------------------------------------------
 // Vector store (in-memory)
@@ -398,6 +398,7 @@ async function retrieveAndBuildContext(userMessage, history, userContext, weathe
 
   const reservationBlock = buildReservationBlock(userContext);
   const weatherBlock = buildWeatherBlock(weather);
+  const locationBlock = buildLocationBlock(userCoords);
 
   const nowDate = new Date();
   const now = nowDate.toLocaleString('en-US', {
@@ -411,7 +412,7 @@ async function retrieveAndBuildContext(userMessage, history, userContext, weathe
   });
   const nowISO = nowDate.toISOString();
 
-  const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context });
+  const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, locationBlock, context });
   const messages = await prepareMessages(systemPrompt, history, userMessage);
 
   return { messages, pinResult };
