@@ -171,6 +171,32 @@ exports.changePassword = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, message: 'Password changed successfully' });
 });
 
+// @desc    Update profile (name, email, telephone)
+// @route   PUT /api/v1/auth/profile
+// @access  Private
+exports.updateProfile = asyncHandler(async (req, res, next) => {
+  const allowedFields = ['name', 'email', 'telephone'];
+  const updateData = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) updateData[field] = req.body[field];
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return res.status(400).json({ success: false, message: 'No valid fields to update' });
+  }
+
+  // If email is changing, check uniqueness
+  if (updateData.email) {
+    const existing = await User.findOne({ email: updateData.email, _id: { $ne: req.user.id } });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Email is already in use' });
+    }
+  }
+
+  const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true, runValidators: true });
+  res.status(200).json({ success: true, data: user });
+});
+
 //@desc     Register Merchant
 //@route    POST /api/v1/auth/register/merchant
 //@access   Public
