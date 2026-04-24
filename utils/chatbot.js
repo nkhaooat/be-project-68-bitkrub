@@ -346,17 +346,10 @@ ${svcLines}${pinnedServiceNote}
 }
 
 // ---------------------------------------------------------------------------
-// Main chat function
+// Shared retrieval + context builder (used by both chat and chatStream)
 // ---------------------------------------------------------------------------
 
-/**
- * @param {string} userMessage
- * @param {{ role: string, content: string }[]} history  - prior turns (optional)
- * @param {{ activeCount: number, slotsRemaining: number, reservations: object[] } | null} userContext
- * @param {{ temp: number, wind: number, rainChance: number } | null} weather - from client (GISTDA, Thai IP only)
- * @returns {Promise<string>} assistant reply
- */
-async function chat(userMessage, history = [], userContext = null, weather = null, userCoords = null) {
+async function retrieveAndBuildContext(userMessage, history, userContext, weather, userCoords) {
   if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
     if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
       console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
@@ -367,7 +360,6 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
 
   const queryEmbedding = await embed(userMessage);
 
-  // Retrieve relevant chunks — filter out service chunks from other shops when a shop is pinned
   const anchor = detectGeoAnchor(userMessage, userCoords);
   let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
   if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
@@ -391,18 +383,16 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
       .slice(0, 12);
   }
 
-  // Resolve pinned shop
   const pinResult = await resolvePinnedShop(userMessage, history);
   const shopPinBlock = pinResult?.shopPinBlock || '';
 
-  // Filter retrieved chunks: when a shop is pinned, drop service chunks from OTHER shops
   const hits = pinResult?.shop
     ? allHits.filter(h =>
         h.metadata?.type !== 'service' || h.metadata?.shopId === pinResult.shop._id.toString()
       )
     : allHits;
 
-  // Annotate context with distance from anchor point (so chatbot knows actual distances)
+  // Annotate context with distance from anchor point
   const context = hits.map((h) => {
     let distTag = '';
     if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
@@ -415,6 +405,7 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
     }
     return h.text + distTag;
   }).join('\n\n---\n\n');
+
   const reservationBlock = buildReservationBlock(userContext);
   const weatherBlock = buildWeatherBlock(weather);
 
@@ -431,7 +422,24 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const nowISO = nowDate.toISOString();
 
   const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context });
-  const messages = prepareMessages(systemPrompt, history, userMessage);
+  const messages = await prepareMessages(systemPrompt, history, userMessage);
+
+  return { messages, pinResult };
+}
+
+// ---------------------------------------------------------------------------
+// Main chat function
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} userMessage
+ * @param {{ role: string, content: string }[]} history  - prior turns (optional)
+ * @param {{ activeCount: number, slotsRemaining: number, reservations: object[] } | null} userContext
+ * @param {{ temp: number, wind: number, rainChance: number } | null} weather - from Open-Meteo (server-side)
+ * @returns {Promise<string>} assistant reply
+ */
+async function chat(userMessage, history = [], userContext = null, weather = null, userCoords = null) {
+  const { messages } = await retrieveAndBuildContext(userMessage, history, userContext, weather, userCoords);
 
   // --- Call OpenAI with graceful fallback ---
   try {
@@ -498,78 +506,7 @@ async function prepareMessages(systemPrompt, history, userMessage) {
 // ---------------------------------------------------------------------------
 
 async function* chatStream(userMessage, history = [], userContext = null, weather = null, userCoords = null) {
-  if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
-    if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
-      console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
-      resetVectorStore();
-    }
-    await buildVectorStore();
-  }
-
-  const queryEmbedding = await embed(userMessage);
-
-  const anchor = detectGeoAnchor(userMessage, userCoords);
-  let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
-  if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
-    allHits = allHits
-      .map(h => {
-        const lat = h.metadata?.lat;
-        const lng = h.metadata?.lng;
-        let geoBoost = 0;
-        if (typeof lat === 'number' && typeof lng === 'number') {
-          const dKm = haversineKm(anchor.lat, anchor.lng, lat, lng);
-          const maxKm = 7, strongKm = 3;
-          if (dKm <= maxKm) {
-            const t = Math.max(0, Math.min(1, (maxKm - dKm) / (maxKm - strongKm)));
-            geoBoost = 0.35 + 0.65 * t;
-          }
-        }
-        const blended = 0.65 * h.score + 0.35 * geoBoost;
-        return { ...h, score: blended };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 12);
-  }
-
-  const pinResult = await resolvePinnedShop(userMessage, history);
-  const shopPinBlock = pinResult?.shopPinBlock || '';
-
-  const hits = pinResult?.shop
-    ? allHits.filter(h =>
-        h.metadata?.type !== 'service' || h.metadata?.shopId === pinResult.shop._id.toString()
-      )
-    : allHits;
-
-  // Annotate context with distance from anchor point
-  const context = hits.map((h) => {
-    let distTag = '';
-    if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
-      const hLat = h.metadata?.lat;
-      const hLng = h.metadata?.lng;
-      if (typeof hLat === 'number' && typeof hLng === 'number') {
-        const dKm = haversineKm(anchor.lat, anchor.lng, hLat, hLng);
-        distTag = `\n[Distance from ${anchor.labels?.[0] || 'your location'}: ${dKm < 1 ? Math.round(dKm * 1000) + 'm' : dKm.toFixed(1) + 'km'}]`;
-      }
-    }
-    return h.text + distTag;
-  }).join('\n\n---\n\n');
-  const reservationBlock = buildReservationBlock(userContext);
-  const weatherBlock = buildWeatherBlock(weather);
-
-  const nowDate = new Date();
-  const now = nowDate.toLocaleString('en-US', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const nowISO = nowDate.toISOString();
-
-  const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context });
-  const messages = await prepareMessages(systemPrompt, history, userMessage);
+  const { messages } = await retrieveAndBuildContext(userMessage, history, userContext, weather, userCoords);
 
   let fullText = '';
   try {
