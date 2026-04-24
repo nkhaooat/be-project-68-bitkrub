@@ -18,7 +18,7 @@ const MassageShopSchema = new mongoose.Schema({
     },
     tel:{
         type: String,
-        required: [true,'Please add a telephone number']
+        default: null
     },
     map:{
         type: String,
@@ -56,24 +56,21 @@ const MassageShopSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    description: {
-        type: String,
-        default: null
-    },
     tiktokLinks: {
         type: [String],
         default: []
     },
-    // Thai translations (cached from GPT, used by chatbot vector store)
+    // Weekly hours (e.g. ["Mon-Fri: 10:00–22:00", "Sat-Sun: 09:00–23:00"])
+    hours: {
+        type: [String],
+        default: []
+    },
+    // Thai translations — cached by GPT for chatbot vector store, not rendered on frontend
     nameTh: {
         type: String,
         default: null
     },
     locationTh: {
-        type: String,
-        default: null
-    },
-    descriptionTh: {
         type: String,
         default: null
     },

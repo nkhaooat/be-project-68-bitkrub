@@ -200,24 +200,6 @@ exports.removeTiktokLink = asyncHandler(async (req, res, next) => {
     res.status(200).json({ success: true, data: shop.tiktokLinks });
 });
 
-// @desc    Update shop description
-// @route   PUT /api/v1/shops/:id/description
-// @access  Private/Admin
-exports.updateDescription = asyncHandler(async (req, res, next) => {
-  markVectorStoreStale();
-    const { description } = req.body;
-    if (typeof description !== 'string') {
-        return res.status(400).json({ success: false, message: 'description string is required' });
-    }
-    const shop = await MassageShop.findByIdAndUpdate(
-        req.params.id,
-        { $set: { description: description.trim() || null } },
-        { new: true }
-    );
-    if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
-    res.status(200).json({ success: true, data: { description: shop.description } });
-});
-
 // @desc    Delete massage shop
 // @route   DELETE /api/v1/shops/:id
 // @access  Private/Admin

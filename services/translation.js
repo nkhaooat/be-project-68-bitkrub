@@ -1,7 +1,7 @@
 /**
  * Thai translation service for massage shop data.
  *
- * Ensures Thai translations exist for shop names, locations, descriptions,
+ * Ensures Thai translations exist for shop names, locations,
  * and service names/areas. Uses GPT-4o-mini for translation and caches
  * results in MongoDB so subsequent rebuilds skip the API call.
  */
@@ -17,7 +17,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  *
  * @param {Object} shop - Mongoose shop document (lean)
  * @param {Object[]} shopServices - Mongoose service documents (lean) for this shop
- * @returns {Promise<{ shopNameTh, locationTh, descriptionTh, searchAreaTh, services: [{ nameTh, areaTh, descTh }] } | null>}
+ * @returns {Promise<{ shopNameTh, locationTh, searchAreaTh, services: [{ nameTh, areaTh, descTh }] } | null>}
  */
 async function ensureThaiTranslation(shop, shopServices) {
   const shopHasThai = shop.nameTh && shop.locationTh && shop.searchAreaTh;
@@ -27,7 +27,6 @@ async function ensureThaiTranslation(shop, shopServices) {
     return {
       shopNameTh: shop.nameTh,
       locationTh: shop.locationTh,
-      descriptionTh: shop.descriptionTh,
       searchAreaTh: shop.searchAreaTh,
       services: shopServices.map(s => ({
         nameTh: s.nameTh,
@@ -47,7 +46,6 @@ async function ensureThaiTranslation(shop, shopServices) {
 Shop name: "${shop.name}"
 Address (translate to Thai): "${shop.address}"
 Search area: "${shop.searchArea || ''}"
-Description: "${shop.description || ''}"
 Services:
 ${serviceItems}
 
@@ -56,7 +54,6 @@ Reply format:
   "shopNameTh": "...",
   "locationTh": "...",
   "searchAreaTh": "...",
-  "descriptionTh": "...",
   "services": [
     { "nameTh": "...", "areaTh": "...", "descTh": "..." }
   ]
@@ -80,7 +77,7 @@ For searchAreaTh: translate the neighborhood name with common Thai aliases separ
 
     await MassageShop.updateOne(
       { _id: shop._id },
-      { $set: { nameTh: thai.shopNameTh, locationTh: thai.locationTh, descriptionTh: thai.descriptionTh, searchAreaTh: thai.searchAreaTh } }
+      { $set: { nameTh: thai.shopNameTh, locationTh: thai.locationTh, searchAreaTh: thai.searchAreaTh } }
     );
     for (let i = 0; i < shopServices.length; i++) {
       const svcThai = thai.services?.[i];

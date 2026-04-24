@@ -7,7 +7,7 @@
  *  2. chat(userMessage) — embeds the user message, finds top-K similar chunks
  *     via cosine similarity, injects them as context into a GPT completion.
  *
- * TikTok links and shop descriptions are stored in MongoDB (MassageShop model).
+ * TikTok links are stored in MongoDB (MassageShop model).
  * No static map needed — all data comes from the DB.
  */
 
@@ -109,14 +109,6 @@ async function buildVectorStore() {
       const tiktokLinks = (shop.tiktokLinks && shop.tiktokLinks.length) ? shop.tiktokLinks : [];
       const hasTiktok = tiktokLinks.length > 0;
 
-      // Auto-generate description if none stored
-      const description = shop.description ||
-        `${shop.name} is a massage shop in ${shop.location}, Bangkok. ` +
-        `Price range: ฿${shop.priceRangeMin}–฿${shop.priceRangeMax}. ` +
-        `Open ${shop.openTime}–${shop.closeTime}.` +
-        (shop.rating ? ` Rated ${shop.rating}/5.` : '') +
-        (hasTiktok ? ' Has TikTok content available.' : '');
-
       // --- Get Thai translations (from DB cache or GPT if missing) ---
       const thai = await ensureThaiTranslation(shop, shopServices);
 
@@ -138,8 +130,6 @@ async function buildVectorStore() {
         shop.rating ? `Rating: ${shop.rating}/5` : '',
         shop.rating ? `คะแนน: ${shop.rating}/5` : '',
         shop.map ? `Map: ${shop.map}` : '',
-        `Description: ${description}`,
-        thai && thai.descriptionTh ? `รายละเอียด: ${thai.descriptionTh}` : '',
         hasTiktok
           ? `TikTok videos: ${tiktokLinks.join(', ')}`
           : 'No TikTok videos available for this shop.',
