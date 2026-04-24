@@ -50,6 +50,8 @@ Time format: always Bangkok +07:00, never UTC. Examples: 3 PM today → 2026-04-
 SHOP ID ACCURACY: Only use shopId/serviceId from chunks that match the shop the user named. Never borrow IDs from a different shop. If context lacks the right shop's data, ask for clarification rather than guessing.
 
 GEO & DISTANCE: When context chunks include [Distance from ...: Xkm], use those exact distances — never estimate or make up distances. If user asks "near me" / ร้านนวดใกล้ฉัน and no distance tags appear, say you don't know their location and suggest they enable browser location or name a BTS/MRT station. Sort by distance when recommending.
+
+WEATHER: If the prompt includes a Weather line, use it. If no Weather line is present, the user didn't ask about weather — don't mention it. Never say "I don't have weather data" unless the user explicitly asked about weather.
 ${shopPinBlock}
 ${reservationBlock}
 --- RETRIEVED CONTEXT ---

@@ -3,7 +3,7 @@ const Reservation = require('../models/Reservation');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../middleware/asyncHandler');
-const { fetchWeather } = require('../services/weather');
+const { fetchWeather, prefetchBangkok, isWeatherQuery } = require('../services/weather');
 
 /**
  * POST /api/v1/chat
@@ -18,8 +18,8 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: 'message is required' });
     }
 
-    // --- Fetch weather server-side ---
-    const weather = await fetchWeather({ lat, lng });
+    // --- Fetch weather only when relevant (saves ~800ms per unrelated query) ---
+    const weather = isWeatherQuery(message) ? await fetchWeather({ lat, lng }) : null;
 
     // --- Optional auth: extract user from Bearer token if present ---
     let userContext = null;
@@ -137,8 +137,8 @@ exports.chatStreamBot = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: 'message is required' });
     }
 
-    // --- Fetch weather server-side ---
-    const weather = await fetchWeather({ lat, lng });
+    // --- Fetch weather only when relevant ---
+    const weather = isWeatherQuery(message) ? await fetchWeather({ lat, lng }) : null;
 
     // --- Same auth extraction as chatWithBot ---
     let userContext = null;

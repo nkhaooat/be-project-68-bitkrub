@@ -8,6 +8,7 @@ const BANGKOK_LAT = 13.75;
 const BANGKOK_LNG = 100.5;
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Simple cache — keyed by rounded lat/lng
 let cache = { key: '', data: null, ts: 0 };
 
 function cacheKey(lat, lng) {
@@ -33,7 +34,7 @@ async function fetchWeather(coords = {}) {
 
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,precipitation_probability&timezone=Asia/Bangkok`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
 
     const json = await res.json();
@@ -49,8 +50,22 @@ async function fetchWeather(coords = {}) {
     return data;
   } catch (err) {
     console.warn('[weather] Open-Meteo fetch failed:', err.message);
+    // Return stale cache if available (better than nothing)
+    if (cache.data) return cache.data;
     return null;
   }
 }
 
-module.exports = { fetchWeather };
+/** Prefetch Bangkok weather at startup so first query is instant */
+function prefetchBangkok() {
+  fetchWeather({ lat: BANGKOK_LAT, lng: BANGKOK_LNG })
+    .then(d => d ? console.log(`[weather] Prefetched Bangkok: ${d.temp}°C`) : console.log('[weather] Prefetch failed'))
+    .catch(() => {});
+}
+
+/** Check if a message is weather-related */
+function isWeatherQuery(text) {
+  return /weather|rain|hot|temperature|wind|umbrella|อากาศ|ฝน|ร้อน|ลม|หนาว|forecast/i.test(text || '');
+}
+
+module.exports = { fetchWeather, prefetchBangkok, isWeatherQuery };

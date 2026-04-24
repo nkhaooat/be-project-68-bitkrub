@@ -54,9 +54,11 @@ connectDB();
 
 // Pre-warm chatbot vector store after DB connects
 const { buildVectorStore } = require('./utils/chatbot');
+const { prefetchBangkok } = require('./services/weather');
 setTimeout(() => {
   if (process.env.OPENAI_API_KEY) {
     buildVectorStore().catch((err) => console.error('[chatbot] pre-warm failed:', err.message));
+    prefetchBangkok();
   } else {
     console.warn('[chatbot] OPENAI_API_KEY not set — vector store will build on first request');
   }
