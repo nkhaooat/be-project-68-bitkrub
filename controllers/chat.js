@@ -1,5 +1,6 @@
 const { chat, buildVectorStore, resetVectorStore } = require('../utils/chatbot');
 const Reservation = require('../models/Reservation');
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../middleware/asyncHandler');
 
@@ -10,7 +11,7 @@ const asyncHandler = require('../middleware/asyncHandler');
  * Returns: { success: true, reply: string }
  */
 exports.chatWithBot = asyncHandler(async (req, res) => {
-    const { message, history = [], weather = null } = req.body;
+    const { message, history = [], weather = null, sessionId = null } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ success: false, message: 'message is required' });
@@ -65,6 +66,25 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
                     };
                 })
             };
+
+            // --- Add user role/merchant context ---
+            const userDoc = await User.findById(userId).populate('merchantShop', 'name').lean();
+            if (userDoc) {
+                userContext.role = userDoc.role;
+                userContext.userName = userDoc.name;
+                if (userDoc.role === 'merchant') {
+                    userContext.merchantStatus = userDoc.merchantStatus;
+                    userContext.shopName = userDoc.merchantShop?.name || null;
+                    if (userDoc.merchantStatus === 'approved' && userDoc.merchantShop) {
+                        // Get merchant's pending reservations count
+                        const merchantPending = await Reservation.countDocuments({
+                            shop: userDoc.merchantShop._id,
+                            status: 'pending'
+                        });
+                        userContext.merchantPendingReservations = merchantPending;
+                    }
+                }
+            }
         } catch (err) {
             console.warn('[chat] Could not decode token:', err.message);
         }

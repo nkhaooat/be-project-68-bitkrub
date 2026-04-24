@@ -38,10 +38,10 @@ MERCHANT FEATURES:
 - Shop owners can register as merchants at /register/merchant
 - After registration, merchants need admin approval before accessing the dashboard
 - Approved merchants get a dashboard at /merchant with reservations, shop management, and QR scanning
-- Merchants can scan customer QR codes at /merchant/scan to verify bookings in real time
+- Merchants can scan customer QR codes at their dashboard to verify bookings in real time
 - QR codes link to /qr/{token} pages — merchants scan these with their phone camera
 - If a user asks about becoming a merchant, direct them to /register/merchant
-- If a merchant asks about their status, explain: pending → admin reviews → approved/rejected
+- If the USER STATUS block shows the user is a merchant, tailor responses accordingly (e.g. mention their shop name, pending reservations count)
 
 Language: Respond in the same language the user uses (Thai or English).
 The knowledge base contains both English and Thai text — use whichever matches the user's query.
@@ -129,7 +129,7 @@ ${context}
 /**
  * Build the reservation status block for the system prompt.
  *
- * @param {{ activeCount: number, slotsRemaining: number, reservations: object[] } | null} userContext
+ * @param {{ activeCount: number, slotsRemaining: number, reservations: object[], role?: string, userName?: string, merchantStatus?: string, shopName?: string, merchantPendingReservations?: number } | null} userContext
  * @returns {string}
  */
 function buildReservationBlock(userContext) {
@@ -141,9 +141,18 @@ Remind them to log in if they ask about their bookings or want to make a reserva
 --- END ---`;
   }
 
+  const roleBlock = userContext.role
+    ? `Role: ${userContext.role}${userContext.userName ? ' | Name: ' + userContext.userName : ''}`
+    : '';
+
+  const merchantBlock = userContext.role === 'merchant'
+    ? `\nMerchant status: ${userContext.merchantStatus}${userContext.shopName ? ' | Shop: ' + userContext.shopName : ''}${userContext.merchantStatus === 'approved' && userContext.merchantPendingReservations !== undefined ? ' | Pending reservations: ' + userContext.merchantPendingReservations : ''}\n${userContext.merchantStatus === 'pending' ? 'NOTE: This merchant is pending approval. They cannot access the merchant dashboard yet. Tell them to wait for admin approval.' : ''}\n${userContext.merchantStatus === 'rejected' ? 'NOTE: This merchant was rejected. Suggest they contact support or re-register.' : ''}\n${userContext.merchantStatus === 'approved' ? 'NOTE: This merchant is approved. They can access /merchant dashboard to manage their shop, services, reservations, and scan QR codes.' : ''}`
+    : '';
+
   if (userContext.activeCount === 0) {
     return `
 --- USER RESERVATION STATUS ---
+${roleBlock}${merchantBlock}
 The user is logged in and has 0 active reservations.
 They can book up to 3 services (3 slots remaining).
 --- END ---`;
@@ -155,6 +164,7 @@ They can book up to 3 services (3 slots remaining).
 
   return `
 --- USER RESERVATION STATUS ---
+${roleBlock}${merchantBlock}
 The user is logged in and has ${userContext.activeCount} active reservation(s) out of a maximum of 3.
 Slots remaining: ${userContext.slotsRemaining}
 Active bookings:
