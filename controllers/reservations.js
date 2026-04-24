@@ -7,13 +7,24 @@ const { applyPromotionCode } = require('../services/promotions');
 const { verifyQRToken } = require('../services/qr');
 const { sendConfirmationEmail, sendCancellationEmail, sendReviewRequestEmail } = require('../services/email');
 
+// Reusable populate chain for reservation queries
+const POPULATE_FULL = [
+  { path: 'shop', select: 'name address location tel openTime closeTime' },
+  { path: 'service', select: 'name area duration oil price sessions' },
+  { path: 'user', select: 'name email telephone' }
+];
+
+const POPULATE_LIST = [
+  { path: 'shop', select: 'name address location tel' },
+  { path: 'service', select: 'name area duration oil price' },
+  { path: 'user', select: 'name email telephone' }
+];
+
 // @desc    Get all reservations (admin) or user's reservations
 // @route   GET /api/v1/reservations
 // @access  Private
 exports.getReservations = asyncHandler(async (req, res, next) => {
   let query;
-
-  // Check if user wants to see only their own bookings (myBookings=true)
   const myBookingsOnly = req.query.myBookings === 'true';
 
   if (req.user.role === 'admin' && !myBookingsOnly) {
@@ -21,7 +32,6 @@ exports.getReservations = asyncHandler(async (req, res, next) => {
     const removeFields = ['select', 'sort', 'page', 'limit', 'myBookings'];
     removeFields.forEach(param => delete reqQuery[param]);
 
-    // Date range filter
     if (req.query.startDate || req.query.endDate) {
       reqQuery.resvDate = {};
       if (req.query.startDate) reqQuery.resvDate.$gte = new Date(req.query.startDate);
@@ -37,15 +47,10 @@ exports.getReservations = asyncHandler(async (req, res, next) => {
     query = Reservation.find({ user: req.user.id });
   }
 
-  query = query.populate([
-    { path: 'shop', select: 'name address location tel' },
-    { path: 'service', select: 'name area duration oil price' },
-    { path: 'user', select: 'name email telephone' }
-  ]);
+  query = query.populate(POPULATE_LIST);
 
   if (req.query.sort) {
-    const sortBy = req.query.sort.split(',').join(' ');
-    query = query.sort(sortBy);
+    query = query.sort(req.query.sort.split(',').join(' '));
   } else {
     query = query.sort('-resvDate');
   }
@@ -56,20 +61,12 @@ exports.getReservations = asyncHandler(async (req, res, next) => {
   const total = await Reservation.countDocuments(req.user.role === 'admin' ? {} : { user: req.user.id });
 
   query = query.skip(startIndex).limit(limit);
-
   const reservations = await query;
-
-  const pagination = {
-    total,
-    page,
-    pages: Math.ceil(total / limit),
-    limit
-  };
 
   res.status(200).json({
     success: true,
     count: reservations.length,
-    pagination,
+    pagination: { total, page, pages: Math.ceil(total / limit), limit },
     data: reservations
   });
 });
@@ -78,16 +75,11 @@ exports.getReservations = asyncHandler(async (req, res, next) => {
 // @route   GET /api/v1/reservations/:id
 // @access  Private
 exports.getReservation = asyncHandler(async (req, res, next) => {
-  const reservation = await Reservation.findById(req.params.id).populate([
-    { path: 'shop', select: 'name address location tel openTime closeTime' },
-    { path: 'service', select: 'name area duration oil price sessions' },
-    { path: 'user', select: 'name email telephone' }
-  ]);
+  const reservation = await Reservation.findById(req.params.id).populate(POPULATE_FULL);
 
   if (!reservation) {
     return res.status(404).json({ success: false, message: `Reservation not found with id of ${req.params.id}` });
   }
-
   if (reservation.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Not authorized to access this reservation' });
   }
@@ -99,7 +91,6 @@ exports.getReservation = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/reservations
 // @access  Private
 exports.createReservation = asyncHandler(async (req, res, next) => {
-  // Check if user already has 3 active reservations
   const activeReservations = await Reservation.countDocuments({
     user: req.user.id,
     status: { $in: ['pending', 'confirmed'] },
@@ -113,13 +104,11 @@ exports.createReservation = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Check if shop exists
   const shop = await MassageShop.findById(req.body.shop);
   if (!shop) {
     return res.status(404).json({ success: false, message: `Shop not found with id of ${req.body.shop}` });
   }
 
-  // Check if service exists and belongs to the shop
   const service = await MassageService.findById(req.body.service);
   if (!service) {
     return res.status(404).json({ success: false, message: `Service not found with id of ${req.body.service}` });
@@ -128,7 +117,7 @@ exports.createReservation = asyncHandler(async (req, res, next) => {
     return res.status(400).json({ success: false, message: 'Service does not belong to the selected shop' });
   }
 
-  // Check for time-overlap with the user's existing active reservations
+  // Check for time-overlap
   const newStart = new Date(req.body.resvDate);
   const newEnd = new Date(newStart.getTime() + service.duration * 60 * 1000);
 
@@ -150,7 +139,6 @@ exports.createReservation = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Set the user from auth token
   req.body.user = req.user.id;
 
   // Apply promotion code if provided
@@ -170,13 +158,11 @@ exports.createReservation = asyncHandler(async (req, res, next) => {
     req.body.discountAmount = 0;
   }
 
-  // Generate QR token
   req.body.qrToken = crypto.randomBytes(16).toString('hex');
   req.body.qrActive = true;
 
   const reservation = await Reservation.create(req.body);
 
-  // Send confirmation email (fire-and-forget)
   if (process.env.BREVO_API_KEY) {
     sendConfirmationEmail(reservation).catch(err =>
       console.error('[email] Failed to send confirmation:', err.message)
@@ -200,7 +186,6 @@ exports.updateReservation = asyncHandler(async (req, res, next) => {
     return res.status(404).json({ success: false, message: `Reservation not found with id of ${req.params.id}` });
   }
 
-  // User can only edit their own and only if more than 1 day before reservation date
   if (req.user.role !== 'admin') {
     if (reservation.user.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this reservation' });
@@ -219,13 +204,8 @@ exports.updateReservation = asyncHandler(async (req, res, next) => {
   reservation = await Reservation.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true
-  }).populate([
-    { path: 'shop', select: 'name address location tel openTime closeTime' },
-    { path: 'service', select: 'name area duration oil price sessions' },
-    { path: 'user', select: 'name email telephone' }
-  ]);
+  }).populate(POPULATE_FULL);
 
-  // Send review request email when status changes to completed
   if (req.body.status === 'completed' && reservation.status === 'completed' && process.env.BREVO_API_KEY) {
     sendReviewRequestEmail(reservation).catch(err =>
       console.error('[email] Failed to send review request:', err.message)
@@ -239,7 +219,7 @@ exports.updateReservation = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/reservations/:id
 // @access  Private
 exports.deleteReservation = asyncHandler(async (req, res, next) => {
-  let reservation = await Reservation.findById(req.params.id);
+  const reservation = await Reservation.findById(req.params.id);
 
   if (!reservation) {
     return res.status(404).json({ success: false, message: `Reservation not found with id of ${req.params.id}` });
@@ -286,11 +266,9 @@ exports.uploadSlip = asyncHandler(async (req, res, next) => {
   if (!reservation) {
     return res.status(404).json({ success: false, message: 'Reservation not found' });
   }
-
   if (reservation.user.toString() !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Not authorized' });
   }
-
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Please upload a file' });
   }
@@ -299,12 +277,7 @@ exports.uploadSlip = asyncHandler(async (req, res, next) => {
   reservation.paymentStatus = 'waiting_verification';
   await reservation.save();
 
-  const updated = await Reservation.findById(reservation._id).populate([
-    { path: 'shop', select: 'name address location tel openTime closeTime' },
-    { path: 'service', select: 'name area duration oil price sessions' },
-    { path: 'user', select: 'name email telephone' }
-  ]);
-
+  const updated = await Reservation.findById(reservation._id).populate(POPULATE_FULL);
   res.status(200).json({ success: true, data: updated });
 });
 
@@ -323,7 +296,6 @@ exports.verifySlip = asyncHandler(async (req, res, next) => {
   if (!reservation) {
     return res.status(404).json({ success: false, message: 'Reservation not found' });
   }
-
   if (reservation.paymentStatus !== 'waiting_verification') {
     return res.status(400).json({ success: false, message: 'Reservation is not waiting for verification' });
   }
@@ -337,12 +309,7 @@ exports.verifySlip = asyncHandler(async (req, res, next) => {
 
   await reservation.save();
 
-  const updated = await Reservation.findById(reservation._id).populate([
-    { path: 'shop', select: 'name address location tel openTime closeTime' },
-    { path: 'service', select: 'name area duration oil price sessions' },
-    { path: 'user', select: 'name email telephone' }
-  ]);
-
+  const updated = await Reservation.findById(reservation._id).populate(POPULATE_FULL);
   res.status(200).json({ success: true, data: updated });
 });
 

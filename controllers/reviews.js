@@ -2,23 +2,11 @@ const mongoose = require('mongoose');
 const Reservation = require('../models/Reservation');
 const Review = require('../models/Review');
 const asyncHandler = require('../middleware/asyncHandler');
-
-// Auto-complete: mark past reservations as completed
-async function autoComplete() {
-  const now = new Date();
-  const result = await Reservation.updateMany(
-    {
-      resvDate: { $lt: now },
-      status: { $in: ['pending', 'confirmed'] },
-    },
-    { $set: { status: 'completed' } }
-  );
-  return result.modifiedCount;
-}
+const { autoCompletePastReservations } = require('../services/reservations');
 
 // POST /api/v1/reviews  — create a review for a completed reservation
 exports.createReview = asyncHandler(async (req, res) => {
-  await autoComplete();
+  await autoCompletePastReservations();
 
   const { reservationId, rating, comment } = req.body;
 
@@ -90,13 +78,3 @@ exports.checkReview = asyncHandler(async (req, res) => {
   });
   res.json({ success: true, reviewed: !!existing, data: existing });
 });
-
-// Middleware: auto-complete reservations on any reservation fetch
-exports.autoCompleteMiddleware = async (req, res, next) => {
-  try {
-    await autoComplete();
-  } catch (e) {
-    // non-fatal
-  }
-  next();
-};
