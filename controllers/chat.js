@@ -1,9 +1,7 @@
 const { chat, chatStream, buildVectorStore, resetVectorStore } = require('../utils/chatbot');
-const Reservation = require('../models/Reservation');
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
 const asyncHandler = require('../middleware/asyncHandler');
-const { fetchWeather, prefetchBangkok, isWeatherQuery } = require('../services/weather');
+const { fetchWeather, isWeatherQuery } = require('../services/weather');
+const { extractUserContext } = require('../services/userContext');
 
 /**
  * POST /api/v1/chat
@@ -24,81 +22,11 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
         return res.status(413).json({ success: false, message: 'History too long (max 12 messages)' });
     }
 
-    // --- Fetch weather only when relevant (saves ~800ms per unrelated query) ---
-    const weather = isWeatherQuery(message) ? await fetchWeather({ lat, lng }) : null;
-
-    // --- Optional auth: extract user from Bearer token if present ---
-    let userContext = null;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        try {
-            const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const userId = decoded.id;
-
-            const activeReservations = await Reservation.find({
-                user: userId,
-                status: { $in: ['pending', 'confirmed'] },
-                resvDate: { $gte: new Date() }
-            })
-                .populate('shop', 'name location')
-                .populate('service', 'name duration price')
-                .sort('resvDate')
-                .lean();
-
-            userContext = {
-                activeCount: activeReservations.length,
-                slotsRemaining: 3 - activeReservations.length,
-                reservations: activeReservations.map(r => {
-                    const resvDate = new Date(r.resvDate);
-                    const hoursUntil = (resvDate - new Date()) / (1000 * 60 * 60);
-                    const canModify = hoursUntil > 24;
-                    return {
-                        id: r._id.toString(),
-                        shop: r.shop?.name || 'Unknown shop',
-                        service: r.service?.name || 'Unknown service',
-                        duration: r.service?.duration,
-                        price: r.service?.price,
-                        date: new Date(r.resvDate).toLocaleString('en-US', {
-                            timeZone: 'Asia/Bangkok',
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                        }),
-                        endTime: (() => {
-                            const dur = r.service?.duration || 60;
-                            const end = new Date(new Date(r.resvDate).getTime() + dur * 60 * 1000);
-                            return end.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
-                        })(),
-                        resvDate: r.resvDate,
-                        hoursUntil: Math.round(hoursUntil * 10) / 10,
-                        canModify,
-                        status: r.status
-                    };
-                })
-            };
-
-            // --- Add user role/merchant context ---
-            const userDoc = await User.findById(userId).populate('merchantShop', 'name').lean();
-            if (userDoc) {
-                userContext.role = userDoc.role;
-                userContext.userName = userDoc.name;
-                if (userDoc.role === 'merchant') {
-                    userContext.merchantStatus = userDoc.merchantStatus;
-                    userContext.shopName = userDoc.merchantShop?.name || null;
-                    if (userDoc.merchantStatus === 'approved' && userDoc.merchantShop) {
-                        // Get merchant's pending reservations count
-                        const merchantPending = await Reservation.countDocuments({
-                            shop: userDoc.merchantShop._id,
-                            status: 'pending'
-                        });
-                        userContext.merchantPendingReservations = merchantPending;
-                    }
-                }
-            }
-        } catch (err) {
-            console.warn('[chat] Could not decode token:', err.message);
-        }
-    }
+    // --- Parallel: weather + auth (reduces TTFT) ---
+    const [weather, userContext] = await Promise.all([
+      isWeatherQuery(message) ? fetchWeather({ lat, lng }) : Promise.resolve(null),
+      extractUserContext(req.headers.authorization),
+    ]);
 
     const reply = await chat(message.trim(), history, userContext, weather, { lat, lng });
 
@@ -112,7 +40,7 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
         try {
             action = { type: 'create_reservation', ...JSON.parse(bookMatch[1]) };
             cleanReply = reply.replace(/\[\[BOOK:\{[^\]]+\}\]\]\n?/, '').trim();
-        } catch { /* malformed action — just send reply as-is */ }
+        } catch { /* malformed action */ }
     } else if (cancelMatch) {
         try {
             action = { type: 'cancel_reservation', ...JSON.parse(cancelMatch[1]) };
@@ -149,79 +77,11 @@ exports.chatStreamBot = asyncHandler(async (req, res) => {
         return res.status(413).json({ success: false, message: 'History too long (max 12 messages)' });
     }
 
-    // --- Fetch weather only when relevant ---
-    const weather = isWeatherQuery(message) ? await fetchWeather({ lat, lng }) : null;
-
-    // --- Same auth extraction as chatWithBot ---
-    let userContext = null;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        try {
-            const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const userId = decoded.id;
-
-            const activeReservations = await Reservation.find({
-                user: userId,
-                status: { $in: ['pending', 'confirmed'] },
-                resvDate: { $gte: new Date() }
-            })
-                .populate('shop', 'name location')
-                .populate('service', 'name duration price')
-                .sort('resvDate')
-                .lean();
-
-            userContext = {
-                activeCount: activeReservations.length,
-                slotsRemaining: 3 - activeReservations.length,
-                reservations: activeReservations.map(r => {
-                    const resvDate = new Date(r.resvDate);
-                    const hoursUntil = (resvDate - new Date()) / (1000 * 60 * 60);
-                    const canModify = hoursUntil > 24;
-                    return {
-                        id: r._id.toString(),
-                        shop: r.shop?.name || 'Unknown shop',
-                        service: r.service?.name || 'Unknown service',
-                        duration: r.service?.duration,
-                        price: r.service?.price,
-                        date: new Date(r.resvDate).toLocaleString('en-US', {
-                            timeZone: 'Asia/Bangkok',
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                        }),
-                        endTime: (() => {
-                            const dur = r.service?.duration || 60;
-                            const end = new Date(new Date(r.resvDate).getTime() + dur * 60 * 1000);
-                            return end.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
-                        })(),
-                        resvDate: r.resvDate,
-                        hoursUntil: Math.round(hoursUntil * 10) / 10,
-                        canModify,
-                        status: r.status
-                    };
-                })
-            };
-
-            const userDoc = await User.findById(userId).populate('merchantShop', 'name').lean();
-            if (userDoc) {
-                userContext.role = userDoc.role;
-                userContext.userName = userDoc.name;
-                if (userDoc.role === 'merchant') {
-                    userContext.merchantStatus = userDoc.merchantStatus;
-                    userContext.shopName = userDoc.merchantShop?.name || null;
-                    if (userDoc.merchantStatus === 'approved' && userDoc.merchantShop) {
-                        const merchantPending = await Reservation.countDocuments({
-                            shop: userDoc.merchantShop._id,
-                            status: 'pending'
-                        });
-                        userContext.merchantPendingReservations = merchantPending;
-                    }
-                }
-            }
-        } catch (err) {
-            console.warn('[chat/stream] Could not decode token:', err.message);
-        }
-    }
+    // --- Parallel: weather + auth (reduces TTFT) ---
+    const [weather, userContext] = await Promise.all([
+      isWeatherQuery(message) ? fetchWeather({ lat, lng }) : Promise.resolve(null),
+      extractUserContext(req.headers.authorization),
+    ]);
 
     // --- Stream response ---
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
