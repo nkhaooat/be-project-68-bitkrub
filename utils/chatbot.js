@@ -128,7 +128,6 @@ async function buildVectorStore() {
         thai && thai.locationTh ? `ที่อยู่: ${thai.locationTh}` : '',
         shop.searchArea ? `Area: ${shop.searchArea}` : '',
         thai && thai.searchAreaTh ? `ย่าน: ${thai.searchAreaTh}` : '',
-        `Keywords: พญาไท, Phaya Thai, Phyathai, BTS Phaya Thai, ARL Phaya Thai, ราชเทวี, Ratchathewi, สยาม, Siam, Siam Square`,
         `Address: ${shop.address}`,
         shop.tel ? `Phone: ${shop.tel}` : '',
         `Hours: ${shop.openTime} – ${shop.closeTime}`,
@@ -357,7 +356,7 @@ ${svcLines}${pinnedServiceNote}
  * @param {{ temp: number, wind: number, rainChance: number } | null} weather - from client (GISTDA, Thai IP only)
  * @returns {Promise<string>} assistant reply
  */
-async function chat(userMessage, history = [], userContext = null, weather = null) {
+async function chat(userMessage, history = [], userContext = null, weather = null, userCoords = null) {
   if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
     if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
       console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
@@ -369,7 +368,7 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const queryEmbedding = await embed(userMessage);
 
   // Retrieve relevant chunks — filter out service chunks from other shops when a shop is pinned
-  const anchor = detectGeoAnchor(userMessage);
+  const anchor = detectGeoAnchor(userMessage, userCoords);
   let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
   if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
     allHits = allHits
@@ -403,7 +402,19 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
       )
     : allHits;
 
-  const context = hits.map((h) => h.text).join('\n\n---\n\n');
+  // Annotate context with distance from anchor point (so chatbot knows actual distances)
+  const context = hits.map((h) => {
+    let distTag = '';
+    if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
+      const hLat = h.metadata?.lat;
+      const hLng = h.metadata?.lng;
+      if (typeof hLat === 'number' && typeof hLng === 'number') {
+        const dKm = haversineKm(anchor.lat, anchor.lng, hLat, hLng);
+        distTag = `\n[Distance from ${anchor.labels?.[0] || 'your location'}: ${dKm < 1 ? Math.round(dKm * 1000) + 'm' : dKm.toFixed(1) + 'km'}]`;
+      }
+    }
+    return h.text + distTag;
+  }).join('\n\n---\n\n');
   const reservationBlock = buildReservationBlock(userContext);
   const weatherBlock = buildWeatherBlock(weather);
 
@@ -486,7 +497,7 @@ async function prepareMessages(systemPrompt, history, userMessage) {
 // Streaming chat
 // ---------------------------------------------------------------------------
 
-async function* chatStream(userMessage, history = [], userContext = null, weather = null) {
+async function* chatStream(userMessage, history = [], userContext = null, weather = null, userCoords = null) {
   if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
     if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
       console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
@@ -497,7 +508,7 @@ async function* chatStream(userMessage, history = [], userContext = null, weathe
 
   const queryEmbedding = await embed(userMessage);
 
-  const anchor = detectGeoAnchor(userMessage);
+  const anchor = detectGeoAnchor(userMessage, userCoords);
   let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
   if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
     allHits = allHits
@@ -529,7 +540,19 @@ async function* chatStream(userMessage, history = [], userContext = null, weathe
       )
     : allHits;
 
-  const context = hits.map((h) => h.text).join('\n\n---\n\n');
+  // Annotate context with distance from anchor point
+  const context = hits.map((h) => {
+    let distTag = '';
+    if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
+      const hLat = h.metadata?.lat;
+      const hLng = h.metadata?.lng;
+      if (typeof hLat === 'number' && typeof hLng === 'number') {
+        const dKm = haversineKm(anchor.lat, anchor.lng, hLat, hLng);
+        distTag = `\n[Distance from ${anchor.labels?.[0] || 'your location'}: ${dKm < 1 ? Math.round(dKm * 1000) + 'm' : dKm.toFixed(1) + 'km'}]`;
+      }
+    }
+    return h.text + distTag;
+  }).join('\n\n---\n\n');
   const reservationBlock = buildReservationBlock(userContext);
   const weatherBlock = buildWeatherBlock(weather);
 

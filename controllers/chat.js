@@ -94,7 +94,7 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
         }
     }
 
-    const reply = await chat(message.trim(), history, userContext, weather);
+    const reply = await chat(message.trim(), history, userContext, weather, { lat, lng });
 
     // Parse booking/cancel/edit action if present
     const bookMatch = reply.match(/\[\[BOOK:(\{[^\]]+\})\]\]/);
@@ -218,7 +218,7 @@ exports.chatStreamBot = asyncHandler(async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no'); // nginx
 
     try {
-        for await (const event of chatStream(message.trim(), history, userContext, weather)) {
+        for await (const event of chatStream(message.trim(), history, userContext, weather, { lat, lng })) {
             res.write(JSON.stringify(event) + '\n');
         }
         res.write(JSON.stringify({ type: 'done' }) + '\n');

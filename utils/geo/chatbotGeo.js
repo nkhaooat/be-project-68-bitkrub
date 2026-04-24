@@ -53,15 +53,23 @@ try {
  * @param {string} text - User message
  * @returns {{ lat: number, lng: number, labels: string[], nearIntent: boolean } | null}
  */
-function detectGeoAnchor(text) {
+function detectGeoAnchor(text, userCoords) {
   const q = (text || '').toLowerCase();
-  const nearIntent = /(near|around|ใกล้|แถว|ย่าน|บริเวณ|โซน)/i.test(q);
+  const nearIntent = /(near|around|ใกล้|แถว|ย่าน|บริเวณ|โซน|near me|nearby|close to|ร้านนวดใกล้ฉัน|ใกล้ฉัน|ใกล้ตัว)/i.test(q);
+
+  // Check named anchors first
   for (const spot of GEO_ALIASES) {
     if (spot.labels.some(lbl => q.includes(lbl))) {
       return { ...spot, nearIntent: true };
     }
   }
-  return nearIntent ? null : null;
+
+  // "near me" / ใกล้ฉัน — use browser geolocation if available
+  if (nearIntent && userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
+    return { lat: userCoords.lat, lng: userCoords.lng, labels: ['user location'], nearIntent: true };
+  }
+
+  return null;
 }
 
 module.exports = { haversineKm, detectGeoAnchor, GEO_ALIASES };
