@@ -6,6 +6,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const helmet = require('helmet');
+const { globalLimiter } = require('./middleware/rateLimit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -45,6 +47,15 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Next.js handles its own CSP
+  crossOriginEmbedderPolicy: false, // Allow Google Maps embeds
+}));
+
+// Global rate limiter
+app.use(globalLimiter);
 
 //Load env vars
 dotenv.config({ path: './config/config.env' });

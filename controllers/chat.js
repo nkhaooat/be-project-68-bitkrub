@@ -17,6 +17,12 @@ exports.chatWithBot = asyncHandler(async (req, res) => {
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ success: false, message: 'message is required' });
     }
+    if (message.length > 2000) {
+        return res.status(413).json({ success: false, message: 'Message too long (max 2000 characters)' });
+    }
+    if (history.length > 12) {
+        return res.status(413).json({ success: false, message: 'History too long (max 12 messages)' });
+    }
 
     // --- Fetch weather only when relevant (saves ~800ms per unrelated query) ---
     const weather = isWeatherQuery(message) ? await fetchWeather({ lat, lng }) : null;
@@ -135,6 +141,12 @@ exports.chatStreamBot = asyncHandler(async (req, res) => {
 
     if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ success: false, message: 'message is required' });
+    }
+    if (message.length > 2000) {
+        return res.status(413).json({ success: false, message: 'Message too long (max 2000 characters)' });
+    }
+    if (history.length > 12) {
+        return res.status(413).json({ success: false, message: 'History too long (max 12 messages)' });
     }
 
     // --- Fetch weather only when relevant ---
