@@ -420,8 +420,34 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
   const nowISO = nowDate.toISOString();
 
   const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context });
+  const messages = prepareMessages(systemPrompt, history, userMessage);
 
-  // --- History management: summarize long conversations ---
+  // --- Call OpenAI with graceful fallback ---
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages,
+      max_tokens: 1200,
+      temperature: 0.4,
+    });
+    return completion.choices[0].message.content;
+  } catch (err) {
+    console.error('[chatbot] OpenAI completion error:', err.message);
+    if (err.status === 429 || err.code === 'insufficient_quota') {
+      return 'I\'m currently experiencing high demand. Please try again in a moment. ขออภัย ระบบมีผู้ใช้งานมาก กรุณาลองใหม่อีกครั้งครับ';
+    }
+    if (err.status === 401) {
+      return 'I\'m having trouble connecting to my service. The team has been notified. ระบบขัดข้องชั่วคราว ขออภัยในความไม่สะดวกครับ';
+    }
+    return 'Sorry, I encountered an error. Please try again. ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่ครับ';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: prepare messages array (shared by chat + chatStream)
+// ---------------------------------------------------------------------------
+
+async function prepareMessages(systemPrompt, history, userMessage) {
   let chatHistory = history;
   if (chatHistory.length > 10) {
     const head = chatHistory.slice(0, 2);
@@ -449,37 +475,126 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
       }
     }
   }
-
-  const messages = [
+  return [
     { role: 'system', content: systemPrompt },
     ...chatHistory,
     { role: 'user', content: userMessage },
   ];
+}
 
-  // --- Call OpenAI with graceful fallback ---
+// ---------------------------------------------------------------------------
+// Streaming chat
+// ---------------------------------------------------------------------------
+
+async function* chatStream(userMessage, history = [], userContext = null, weather = null) {
+  if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
+    if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
+      console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
+      resetVectorStore();
+    }
+    await buildVectorStore();
+  }
+
+  const queryEmbedding = await embed(userMessage);
+
+  const anchor = detectGeoAnchor(userMessage);
+  let allHits = retrieve(queryEmbedding, anchor ? 40 : 12);
+  if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
+    allHits = allHits
+      .map(h => {
+        const lat = h.metadata?.lat;
+        const lng = h.metadata?.lng;
+        let geoBoost = 0;
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          const dKm = haversineKm(anchor.lat, anchor.lng, lat, lng);
+          const maxKm = 7, strongKm = 3;
+          if (dKm <= maxKm) {
+            const t = Math.max(0, Math.min(1, (maxKm - dKm) / (maxKm - strongKm)));
+            geoBoost = 0.35 + 0.65 * t;
+          }
+        }
+        const blended = 0.65 * h.score + 0.35 * geoBoost;
+        return { ...h, score: blended };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+  }
+
+  const pinResult = await resolvePinnedShop(userMessage, history);
+  const shopPinBlock = pinResult?.shopPinBlock || '';
+
+  const hits = pinResult?.shop
+    ? allHits.filter(h =>
+        h.metadata?.type !== 'service' || h.metadata?.shopId === pinResult.shop._id.toString()
+      )
+    : allHits;
+
+  const context = hits.map((h) => h.text).join('\n\n---\n\n');
+  const reservationBlock = buildReservationBlock(userContext);
+  const weatherBlock = buildWeatherBlock(weather);
+
+  const nowDate = new Date();
+  const now = nowDate.toLocaleString('en-US', {
+    timeZone: 'Asia/Bangkok',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const nowISO = nowDate.toISOString();
+
+  const systemPrompt = buildSystemPrompt({ now, nowISO, weatherBlock, shopPinBlock, reservationBlock, context });
+  const messages = await prepareMessages(systemPrompt, history, userMessage);
+
+  let fullText = '';
   try {
-    const completion = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
       max_tokens: 1200,
       temperature: 0.4,
+      stream: true,
     });
-    return completion.choices[0].message.content;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) {
+        fullText += delta;
+        yield { type: 'token', text: delta };
+      }
+    }
   } catch (err) {
-    console.error('[chatbot] OpenAI completion error:', err.message);
+    console.error('[chatbot] OpenAI stream error:', err.message);
     if (err.status === 429 || err.code === 'insufficient_quota') {
-      return 'I\'m currently experiencing high demand. Please try again in a moment. ขออภัย ระบบมีผู้ใช้งานมาก กรุณาลองใหม่อีกครั้งครับ';
+      yield { type: 'error', text: 'I\'m currently experiencing high demand. Please try again in a moment.' };
+    } else {
+      yield { type: 'error', text: 'Sorry, I encountered an error. Please try again.' };
     }
-    if (err.status === 401) {
-      return 'I\'m having trouble connecting to my service. The team has been notified. ระบบขัดข้องชั่วคราว ขออภัยในความไม่สะดวกครับ';
+    return;
+  }
+
+  // Parse action tags from accumulated text
+  const actionPatterns = [
+    { re: /\[\[BOOK:(\{[^\]]+\})\]\]/, type: 'create_reservation' },
+    { re: /\[\[EDIT:(\{[^\]]+\})\]\]/, type: 'edit_reservation' },
+    { re: /\[\[CANCEL:(\{[^\]]+\})\]\]/, type: 'cancel_reservation' },
+  ];
+
+  for (const { re, type } of actionPatterns) {
+    const match = fullText.match(re);
+    if (match) {
+      try {
+        const action = { type, ...JSON.parse(match[1]) };
+        yield { type: 'action', action };
+      } catch {
+        // malformed
+      }
+      break;
     }
-    return 'Sorry, I encountered an error. Please try again. ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่ครับ';
   }
 }
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Exports
@@ -497,4 +612,4 @@ function markVectorStoreStale() {
   lastBuiltAt = 0;
 }
 
-module.exports = { buildVectorStore, chat, resetVectorStore, markVectorStoreStale };
+module.exports = { buildVectorStore, chat, chatStream, resetVectorStore, markVectorStoreStale };
