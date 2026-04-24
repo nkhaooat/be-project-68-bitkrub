@@ -3,6 +3,7 @@ const MassageShop = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
 const Reservation = require('../models/Reservation');
 const asyncHandler = require('../middleware/asyncHandler');
+const { markVectorStoreStale } = require('../utils/chatbot');
 
 // @desc    Get merchant dashboard (own shop + stats)
 // @route   GET /api/v1/merchant/dashboard
@@ -36,6 +37,7 @@ exports.getMerchantDashboard = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/merchant/shop
 // @access  Private (approved merchant)
 exports.updateMerchantShop = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const merchant = await User.findById(req.user.id);
     const shopId = merchant.merchantShop;
 
@@ -77,6 +79,7 @@ exports.getMerchantServices = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/merchant/services
 // @access  Private (approved merchant)
 exports.createMerchantService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const merchant = await User.findById(req.user.id);
     const service = await MassageService.create({ ...req.body, shop: merchant.merchantShop });
     res.status(201).json({ success: true, data: service });
@@ -86,6 +89,7 @@ exports.createMerchantService = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/merchant/services/:id
 // @access  Private (approved merchant)
 exports.updateMerchantService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const merchant = await User.findById(req.user.id);
     let service = await MassageService.findById(req.params.id);
     if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
@@ -100,6 +104,7 @@ exports.updateMerchantService = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/merchant/services/:id
 // @access  Private (approved merchant)
 exports.deleteMerchantService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const merchant = await User.findById(req.user.id);
     const service = await MassageService.findById(req.params.id);
     if (!service) return res.status(404).json({ success: false, message: 'Service not found' });

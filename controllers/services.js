@@ -1,6 +1,7 @@
 const MassageService = require('../models/MassageService');
 const MassageShop = require('../models/MassageShop');
 const asyncHandler = require('../middleware/asyncHandler');
+const { markVectorStoreStale } = require('../utils/chatbot');
 
 // @desc    Get all massage services
 // @route   GET /api/v1/services
@@ -92,6 +93,7 @@ exports.getService = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/services
 // @access  Private/Admin
 exports.createService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const service = await MassageService.create(req.body);
     res.status(201).json({ success: true, data: service });
 });
@@ -100,6 +102,7 @@ exports.createService = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/services/:id
 // @access  Private/Admin
 exports.updateService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const service = await MassageService.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
         runValidators: true
@@ -114,6 +117,7 @@ exports.updateService = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/services/:id
 // @access  Private/Admin
 exports.deleteService = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const service = await MassageService.findById(req.params.id);
     if (!service) {
         return res.status(404).json({ success: false, message: `Service not found with id of ${req.params.id}` });

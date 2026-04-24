@@ -2,6 +2,7 @@ const MassageShop = require('../models/MassageShop');
 const Review = require('../models/Review');
 const { getPlacePhotoBuffer, getFallbackPhotoUrl } = require('../utils/google/places');
 const asyncHandler = require('../middleware/asyncHandler');
+const { markVectorStoreStale } = require('../utils/chatbot');
 
 // @desc    Get all massage shops
 // @route   GET /api/v1/shops
@@ -121,6 +122,7 @@ exports.getShopPhoto = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/shops
 // @access  Private/Admin
 exports.createShop = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const shop = await MassageShop.create(req.body);
     res.status(201).json({ success: true, data: shop });
 });
@@ -129,6 +131,7 @@ exports.createShop = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/shops/:id
 // @access  Private/Admin
 exports.updateShop = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const shop = await MassageShop.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
         runValidators: true
@@ -164,6 +167,7 @@ exports.addTiktokLinks = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/shops/:id/tiktok
 // @access  Private/Admin
 exports.updateTiktokLinks = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const { links } = req.body;
     if (!Array.isArray(links)) {
         return res.status(400).json({ success: false, message: 'links array is required' });
@@ -182,6 +186,7 @@ exports.updateTiktokLinks = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/shops/:id/tiktok
 // @access  Private/Admin
 exports.removeTiktokLink = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const { link } = req.body;
     if (!link) {
         return res.status(400).json({ success: false, message: 'link is required' });
@@ -199,6 +204,7 @@ exports.removeTiktokLink = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/shops/:id/description
 // @access  Private/Admin
 exports.updateDescription = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const { description } = req.body;
     if (typeof description !== 'string') {
         return res.status(400).json({ success: false, message: 'description string is required' });
@@ -216,6 +222,7 @@ exports.updateDescription = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/shops/:id
 // @access  Private/Admin
 exports.deleteShop = asyncHandler(async (req, res, next) => {
+  markVectorStoreStale();
     const shop = await MassageShop.findById(req.params.id);
     if (!shop) {
         return res.status(404).json({ success: false, message: `Shop not found with id of ${req.params.id}` });

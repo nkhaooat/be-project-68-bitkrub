@@ -24,6 +24,8 @@ const { buildSystemPrompt, buildReservationBlock, buildWeatherBlock } = require(
 let vectorStore = []; // [{ text, embedding: number[], metadata }]
 let storeReady = false;
 let buildPromise = null;
+let lastBuiltAt = 0; // timestamp of last successful build
+const STALE_TTL_MS = 30 * 60 * 1000; // 30 minutes — rebuild if older
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -231,6 +233,7 @@ async function buildVectorStore() {
         }
       }
       storeReady = true;
+      lastBuiltAt = Date.now();
       console.log(`[chatbot] Vector store ready — ${vectorStore.length} chunks indexed.`);
     } catch (err) {
       console.error('[chatbot] Failed to build vector store:', err.message);
@@ -355,7 +358,13 @@ ${svcLines}${pinnedServiceNote}
  * @returns {Promise<string>} assistant reply
  */
 async function chat(userMessage, history = [], userContext = null, weather = null) {
-  if (!storeReady) await buildVectorStore();
+  if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
+    if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
+      console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
+      resetVectorStore();
+    }
+    await buildVectorStore();
+  }
 
   const queryEmbedding = await embed(userMessage);
 
@@ -472,6 +481,10 @@ async function chat(userMessage, history = [], userContext = null, weather = nul
 // Exports
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Exports
+// ---------------------------------------------------------------------------
+
 /** Reset the vector store so it rebuilds on next call */
 function resetVectorStore() {
   vectorStore = [];
@@ -479,4 +492,9 @@ function resetVectorStore() {
   buildPromise = null;
 }
 
-module.exports = { buildVectorStore, chat, resetVectorStore };
+/** Flag the vector store as stale (next chat request will rebuild) */
+function markVectorStoreStale() {
+  lastBuiltAt = 0;
+}
+
+module.exports = { buildVectorStore, chat, resetVectorStore, markVectorStoreStale };
