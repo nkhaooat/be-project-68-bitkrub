@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const MassageService = require('./models/MassageService');
-const MassageShop = require('./models/MassageShop');
+const MassageService = require('../models/MassageService');
+const MassageShop = require('../models/MassageShop');
 
 async function checkDuplicates() {
   try {

@@ -3,6 +3,14 @@
 // ─── Mock Models ─────────────────────────────────────────────────────────────
 jest.mock('../models/Promotion');
 jest.mock('../models/Reservation');
+jest.mock('../services/email', () => ({
+  sendConfirmationEmail: jest.fn(),
+  sendCancellationEmail: jest.fn(),
+  sendReviewRequestEmail: jest.fn(),
+}));
+jest.mock('../services/promotions', () => ({
+  applyPromotionCode: jest.fn(),
+}));
 const Promotion = require('../models/Promotion');
 const Reservation = require('../models/Reservation');
 const promotionsCtrl = require('../controllers/promotions');
@@ -223,16 +231,12 @@ describe('EPIC 4 — US 4-4: Admin Verify Slip', () => {
             _id: 'resv1'
         };
         Reservation.findById.mockResolvedValueOnce(reservation);
-        // Second call for populate after save
+        // Second call for populate after save (array-style populate)
         Reservation.findById.mockReturnValueOnce({
-            populate: jest.fn().mockReturnValue({
-                populate: jest.fn().mockReturnValue({
-                    populate: jest.fn().mockResolvedValue({
-                        paymentStatus: 'approved',
-                        status: 'confirmed',
-                        _id: 'resv1'
-                    })
-                })
+            populate: jest.fn().mockResolvedValue({
+                paymentStatus: 'approved',
+                status: 'confirmed',
+                _id: 'resv1'
             })
         });
 
@@ -255,14 +259,10 @@ describe('EPIC 4 — US 4-4: Admin Verify Slip', () => {
         };
         Reservation.findById.mockResolvedValueOnce(reservation);
         Reservation.findById.mockReturnValueOnce({
-            populate: jest.fn().mockReturnValue({
-                populate: jest.fn().mockReturnValue({
-                    populate: jest.fn().mockResolvedValue({
-                        paymentStatus: 'rejected',
-                        status: 'pending',
-                        _id: 'resv2'
-                    })
-                })
+            populate: jest.fn().mockResolvedValue({
+                paymentStatus: 'rejected',
+                status: 'pending',
+                _id: 'resv2'
             })
         });
 

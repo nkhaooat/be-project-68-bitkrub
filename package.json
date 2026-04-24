@@ -21,7 +21,7 @@
   },
   "jest": {
     "collectCoverageFrom": [
-      "utils/createReservation.js",
+      "scripts/createReservation.js",
       "utils/addTiktokLinks.js"
     ],
     "coverageThreshold": {
@@ -46,8 +46,7 @@
     "node-fetch": "^2.7.0",
     "nodemon": "^3.1.14",
     "openai": "^6.34.0",
-    "qrcode": "^1.5.4",
-    "sib-api-v3-sdk": "^8.5.0"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "jest": "^30.3.0"

@@ -9,7 +9,7 @@ const {
   updateMerchantService,
   deleteMerchantService,
   scanQR
-} = require('../controllers/merchant');
+} = require('../controllers/merchantSelfService');
 
 const router = express.Router();
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect, authorize } = require('../middleware/auth');
-const { getMerchants, approveMerchant, rejectMerchant } = require('../controllers/merchants');
+const { getMerchants, approveMerchant, rejectMerchant } = require('../controllers/merchantAdmin');
 
 const router = express.Router();
 

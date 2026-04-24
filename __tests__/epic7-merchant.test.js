@@ -6,6 +6,14 @@ const mongoose = require('mongoose');
 jest.mock('../models/User');
 jest.mock('../models/MassageShop');
 jest.mock('../models/Reservation');
+jest.mock('../services/email', () => ({
+  sendMerchantStatusEmail: jest.fn(),
+  sendMerchantNotifyAdminEmail: jest.fn(),
+  sendConfirmationEmail: jest.fn(),
+  sendCancellationEmail: jest.fn(),
+  sendReviewRequestEmail: jest.fn(),
+  sendPasswordResetEmail: jest.fn(),
+}));
 
 // Mock auth middleware
 jest.mock('../middleware/auth', () => {
@@ -27,8 +35,8 @@ jest.mock('../middleware/auth', () => {
 
 // Import after mocks
 const { registerMerchant } = require('../controllers/auth');
-const { approveMerchant, rejectMerchant, getMerchants } = require('../controllers/merchants');
-const { scanQR } = require('../controllers/merchant');
+const { approveMerchant, rejectMerchant, getMerchants } = require('../controllers/merchantAdmin');
+const { scanQR } = require('../controllers/merchantSelfService');
 
 describe('EPIC 7 — Merchant Role & Admin Approval', () => {
   beforeEach(() => {

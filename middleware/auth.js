@@ -1,36 +1,41 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const asyncHandler = require('./asyncHandler');
 
-//Protect routes
-exports.protect=async (req,res,next)=>{
+// Protect routes
+exports.protect = asyncHandler(async (req, res, next) => {
     let token;
 
-    if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')){
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];
     }
 
-    //Make sure token exists
-    if(!token) {
-        return res.status(401).json({success:false, message:'Not authorize to access this route'});
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
     }
 
-    try{
-        //Verify token
-        const decoded = jwt.verify(token,process.env.JWT_SECRET);
-
-        console.log(decoded);
-
-        req.user=await User.findById(decoded.id);
-
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await User.findById(decoded.id);
         next();
-    }catch(err){
-        console.log(err.stack);
-        return res.status(401).json({success:false, message:'Not authorize to access this route'});
+    } catch (err) {
+        return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
     }
+});
+
+// Grant access to specific roles
+exports.authorize = (...roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: `User role ${req.user.role} is not authorized to access this route`
+            });
+        }
+        next();
+    };
 };
 
-//at the end of file
-//Grant access to specific roles
 // Merchant-only middleware — requires role=merchant AND merchantStatus=approved
 exports.requireMerchant = () => {
     return (req, res, next) => {
@@ -52,14 +57,3 @@ exports.requireMerchant = () => {
         next();
     };
 };
-
-exports.authorize=(...roles)=>{
-    return (req,res,next)=>{
-        if(!roles.includes(req.user.role)){
-            return res.status(403).json({success:false,
-                message:`User role ${req.user.role} is not authorized to access this route`
-            });
-        }
-        next();
-    }
-}

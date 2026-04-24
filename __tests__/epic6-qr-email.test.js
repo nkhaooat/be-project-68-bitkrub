@@ -5,8 +5,12 @@ jest.mock('../models/Reservation');
 jest.mock('../models/MassageShop');
 jest.mock('../models/MassageService');
 jest.mock('../models/Promotion');
-jest.mock('sib-api-v3-sdk');
 jest.mock('@getbrevo/brevo');
+jest.mock('../services/email', () => ({
+  sendConfirmationEmail: jest.fn(),
+  sendCancellationEmail: jest.fn(),
+  sendReviewRequestEmail: jest.fn(),
+}));
 
 Reservation.updateMany = jest.fn().mockResolvedValue({ modifiedCount: 0 });
 

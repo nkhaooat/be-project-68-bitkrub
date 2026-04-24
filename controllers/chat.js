@@ -1,6 +1,7 @@
 const { chat, buildVectorStore, resetVectorStore } = require('../utils/chatbot');
 const Reservation = require('../models/Reservation');
 const jwt = require('jsonwebtoken');
+const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * POST /api/v1/chat
@@ -8,68 +9,65 @@ const jwt = require('jsonwebtoken');
  * Auth: optional Bearer token — if provided, injects user reservation context
  * Returns: { success: true, reply: string }
  */
-exports.chatWithBot = async (req, res) => {
-  try {
+exports.chatWithBot = asyncHandler(async (req, res) => {
     const { message, history = [], weather = null } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ success: false, message: 'message is required' });
+        return res.status(400).json({ success: false, message: 'message is required' });
     }
 
     // --- Optional auth: extract user from Bearer token if present ---
     let userContext = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const userId = decoded.id;
 
-        // Fetch active reservations for this user
-        const activeReservations = await Reservation.find({
-          user: userId,
-          status: { $in: ['pending', 'confirmed'] },
-          resvDate: { $gte: new Date() }
-        })
-          .populate('shop', 'name location')
-          .populate('service', 'name duration price')
-          .sort('resvDate')
-          .lean();
+            const activeReservations = await Reservation.find({
+                user: userId,
+                status: { $in: ['pending', 'confirmed'] },
+                resvDate: { $gte: new Date() }
+            })
+                .populate('shop', 'name location')
+                .populate('service', 'name duration price')
+                .sort('resvDate')
+                .lean();
 
-        userContext = {
-          activeCount: activeReservations.length,
-          slotsRemaining: 3 - activeReservations.length,
-          reservations: activeReservations.map(r => {
-            const resvDate = new Date(r.resvDate);
-            const hoursUntil = (resvDate - new Date()) / (1000 * 60 * 60);
-            const canModify = hoursUntil > 24;
-            return {
-              id: r._id.toString(),
-              shop: r.shop?.name || 'Unknown shop',
-              service: r.service?.name || 'Unknown service',
-              duration: r.service?.duration,
-              price: r.service?.price,
-              date: new Date(r.resvDate).toLocaleString('en-US', {
-                timeZone: 'Asia/Bangkok',
-                dateStyle: 'medium',
-                timeStyle: 'short'
-              }),
-              endTime: (() => {
-                const dur = r.service?.duration || 60;
-                const end = new Date(new Date(r.resvDate).getTime() + dur * 60 * 1000);
-                return end.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
-              })(),
-              resvDate: r.resvDate,
-              hoursUntil: Math.round(hoursUntil * 10) / 10,
-              canModify,
-              status: r.status
+            userContext = {
+                activeCount: activeReservations.length,
+                slotsRemaining: 3 - activeReservations.length,
+                reservations: activeReservations.map(r => {
+                    const resvDate = new Date(r.resvDate);
+                    const hoursUntil = (resvDate - new Date()) / (1000 * 60 * 60);
+                    const canModify = hoursUntil > 24;
+                    return {
+                        id: r._id.toString(),
+                        shop: r.shop?.name || 'Unknown shop',
+                        service: r.service?.name || 'Unknown service',
+                        duration: r.service?.duration,
+                        price: r.service?.price,
+                        date: new Date(r.resvDate).toLocaleString('en-US', {
+                            timeZone: 'Asia/Bangkok',
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                        }),
+                        endTime: (() => {
+                            const dur = r.service?.duration || 60;
+                            const end = new Date(new Date(r.resvDate).getTime() + dur * 60 * 1000);
+                            return end.toLocaleString('en-US', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
+                        })(),
+                        resvDate: r.resvDate,
+                        hoursUntil: Math.round(hoursUntil * 10) / 10,
+                        canModify,
+                        status: r.status
+                    };
+                })
             };
-          })
-        };
-      } catch (err) {
-        // Invalid/expired token — just treat as guest, don't error
-        console.warn('[chat] Could not decode token:', err.message);
-      }
+        } catch (err) {
+            console.warn('[chat] Could not decode token:', err.message);
+        }
     }
 
     const reply = await chat(message.trim(), history, userContext, weather);
@@ -81,46 +79,31 @@ exports.chatWithBot = async (req, res) => {
     let action = null;
     let cleanReply = reply;
     if (bookMatch) {
-      try {
-        action = { type: 'create_reservation', ...JSON.parse(bookMatch[1]) };
-        cleanReply = reply.replace(/\[\[BOOK:\{[^\]]+\}\]\]\n?/, '').trim();
-      } catch {
-        // malformed action — just send reply as-is
-      }
+        try {
+            action = { type: 'create_reservation', ...JSON.parse(bookMatch[1]) };
+            cleanReply = reply.replace(/\[\[BOOK:\{[^\]]+\}\]\]\n?/, '').trim();
+        } catch { /* malformed action — just send reply as-is */ }
     } else if (cancelMatch) {
-      try {
-        action = { type: 'cancel_reservation', ...JSON.parse(cancelMatch[1]) };
-        cleanReply = reply.replace(/\[\[CANCEL:\{[^\]]+\}\]\]\n?/, '').trim();
-      } catch {
-        // malformed action
-      }
+        try {
+            action = { type: 'cancel_reservation', ...JSON.parse(cancelMatch[1]) };
+            cleanReply = reply.replace(/\[\[CANCEL:\{[^\]]+\}\]\]\n?/, '').trim();
+        } catch { /* malformed action */ }
     } else if (editMatch) {
-      try {
-        action = { type: 'edit_reservation', ...JSON.parse(editMatch[1]) };
-        cleanReply = reply.replace(/\[\[EDIT:\{[^\]]+\}\]\]\n?/, '').trim();
-      } catch {
-        // malformed action
-      }
+        try {
+            action = { type: 'edit_reservation', ...JSON.parse(editMatch[1]) };
+            cleanReply = reply.replace(/\[\[EDIT:\{[^\]]+\}\]\]\n?/, '').trim();
+        } catch { /* malformed action */ }
     }
 
     res.json({ success: true, reply: cleanReply, action });
-  } catch (err) {
-    console.error('[chat] Error:', err);
-    res.status(500).json({ success: false, message: 'Chatbot error. Please try again.' });
-  }
-};
+});
 
 /**
  * POST /api/v1/chat/rebuild
- * Admin endpoint to rebuild the vector store (e.g., after adding new shops).
+ * Admin endpoint to rebuild the vector store.
  */
-exports.rebuildIndex = async (req, res) => {
-  try {
+exports.rebuildIndex = asyncHandler(async (req, res) => {
     resetVectorStore();
     await buildVectorStore();
     res.json({ success: true, message: 'Vector store rebuilt.' });
-  } catch (err) {
-    console.error('[chat/rebuild] Error:', err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+});
