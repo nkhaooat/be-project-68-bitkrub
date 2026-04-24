@@ -8,7 +8,8 @@ const {
   createMerchantService,
   updateMerchantService,
   deleteMerchantService,
-  scanQR
+  scanQR,
+  updateReservationStatus
 } = require('../controllers/merchantSelfService');
 
 const router = express.Router();
@@ -30,6 +31,9 @@ router.delete('/services/:id', deleteMerchantService);
 
 // View reservations for own shop
 router.get('/reservations', getMerchantReservations);
+
+// Update reservation status (own shop only)
+router.put('/reservations/:id/status', updateReservationStatus);
 
 // Scan QR code
 router.post('/qr/scan', scanQR);

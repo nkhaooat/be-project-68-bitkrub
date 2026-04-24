@@ -156,3 +156,28 @@ exports.scanQR = asyncHandler(async (req, res, next) => {
         }
     });
 });
+
+// @desc    Update reservation status (merchant — own shop only)
+// @route   PUT /api/v1/merchant/reservations/:id/status
+// @access  Private (approved merchant)
+exports.updateReservationStatus = asyncHandler(async (req, res, next) => {
+    const { status } = req.body;
+    const allowedStatuses = ['confirmed', 'completed', 'cancelled'];
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status. Allowed: confirmed, completed, cancelled' });
+    }
+
+    const merchant = await User.findById(req.user.id);
+    const reservation = await Reservation.findById(req.params.id);
+    if (!reservation) {
+        return res.status(404).json({ success: false, message: 'Reservation not found' });
+    }
+    if (reservation.shop.toString() !== merchant.merchantShop.toString()) {
+        return res.status(403).json({ success: false, message: 'Not authorized — reservation belongs to a different shop' });
+    }
+
+    reservation.status = status;
+    await reservation.save();
+
+    res.status(200).json({ success: true, data: reservation });
+});
