@@ -54,6 +54,7 @@ app.use(cors(corsOptions));
 app.use(helmet({
   contentSecurityPolicy: false, // Next.js handles its own CSP
   crossOriginEmbedderPolicy: false, // Allow Google Maps embeds
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow frontend on different port to load images
 }));
 
 // Global rate limiter
