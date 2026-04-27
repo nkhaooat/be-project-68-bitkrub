@@ -150,9 +150,10 @@ exports.addTiktokLinks = asyncHandler(async (req, res, next) => {
     if (!links || !Array.isArray(links) || links.length === 0) {
         return res.status(400).json({ success: false, message: 'links array is required' });
     }
-    const validLinks = links.filter(l => typeof l === 'string' && l.includes('tiktok.com'));
+    const tiktokUrlRegex = /^https:\/\/(?:www\.)?tiktok\.com\/@[^\s<>"']+$/;
+    const validLinks = links.filter(l => typeof l === 'string' && tiktokUrlRegex.test(l.trim()));
     if (validLinks.length === 0) {
-        return res.status(400).json({ success: false, message: 'No valid TikTok URLs provided' });
+        return res.status(400).json({ success: false, message: 'No valid TikTok URLs provided. Must be https://tiktok.com/@... or https://www.tiktok.com/@...' });
     }
     const shop = await MassageShop.findByIdAndUpdate(
         req.params.id,
@@ -172,7 +173,8 @@ exports.updateTiktokLinks = asyncHandler(async (req, res, next) => {
     if (!Array.isArray(links)) {
         return res.status(400).json({ success: false, message: 'links array is required' });
     }
-    const validLinks = links.filter(l => typeof l === 'string' && l.includes('tiktok.com'));
+    const tiktokUrlRegex = /^https:\/\/(?:www\.)?tiktok\.com\/@[^\s<>"']+$/;
+    const validLinks = links.filter(l => typeof l === 'string' && tiktokUrlRegex.test(l.trim()));
     const shop = await MassageShop.findByIdAndUpdate(
         req.params.id,
         { $set: { tiktokLinks: validLinks } },
