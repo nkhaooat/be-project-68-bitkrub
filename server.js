@@ -63,7 +63,7 @@ app.use(helmet({
 app.use(globalLimiter);
 
 //Load env vars
-dotenv.config({ path: './config/config.env', override: true });
+dotenv.config({ path: './config/config.env' });
 
 //Connect to database
 connectDB();

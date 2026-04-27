@@ -1,5 +1,5 @@
 node_modules
-uploads
+npm-debug.log
 .git
-__tests__
-docs
+config/config.env
+uploads/

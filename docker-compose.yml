@@ -7,12 +7,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGODB_URI=mongodb://mongo:27017/dungeon-inn
-      - JWT_SECRET=${JWT_SECRET}
+      - MONGO_URI=mongodb://mongo:27017/dungeon-inn
+      - JWT_SECRET=${JWT_SECRET:-changeme}
+      - JWT_EXPIRE=30d
+      - JWT_COOKIE_EXPIRE=30
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
       - BREVO_API_KEY=${BREVO_API_KEY}
-      - CORS_ORIGINS=http://localhost:3000
+      - BREVO_FROM_EMAIL=${BREVO_FROM_EMAIL:-admin@khaoaot.com}
+      - BREVO_FROM_NAME=Dungeon Inn
+      - FRONTEND_URL=http://localhost:3000
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
     depends_on:
       - mongo
     volumes:
