@@ -25,7 +25,8 @@ let vectorStore = []; // [{ text, embedding: number[], metadata }]
 let storeReady = false;
 let buildPromise = null;
 let lastBuiltAt = 0; // timestamp of last successful build
-const STALE_TTL_MS = 30 * 60 * 1000; // 30 minutes — rebuild if older
+// No stale TTL — rebuild is triggered by: startup, midnight cron, or admin action
+// Background rebuild serves from old store while new one builds
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -340,11 +341,8 @@ ${svcLines}${pinnedServiceNote}
 // ---------------------------------------------------------------------------
 
 async function retrieveAndBuildContext(userMessage, history, userContext, weather, userCoords) {
-  if (!storeReady || (lastBuiltAt && Date.now() - lastBuiltAt > STALE_TTL_MS)) {
-    if (Date.now() - lastBuiltAt > STALE_TTL_MS) {
-      console.log('[chatbot] Vector store is stale (>30 min), rebuilding...');
-      resetVectorStore();
-    }
+  // --- Ensure vector store is ready (no stale rebuild — that's handled by cron/admin) ---
+  if (!storeReady) {
     await buildVectorStore();
   }
 
@@ -373,17 +371,11 @@ async function retrieveAndBuildContext(userMessage, history, userContext, weathe
       .slice(0, 12);
   }
 
-  const pinResult = await resolvePinnedShop(userMessage, history);
-  const shopPinBlock = pinResult?.shopPinBlock || '';
+  // --- Parallel: resolve pinned shop + annotate hits with distance ---
+  const pinResultPromise = resolvePinnedShop(userMessage, history);
 
-  const hits = pinResult?.shop
-    ? allHits.filter(h =>
-        h.metadata?.type !== 'service' || h.metadata?.shopId === pinResult.shop._id.toString()
-      )
-    : allHits;
-
-  // Annotate context with distance from anchor point
-  const context = hits.map((h) => {
+  // Pre-compute distance annotations while pin resolves
+  const hitsWithDist = allHits.map((h) => {
     let distTag = '';
     if (anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number') {
       const hLat = h.metadata?.lat;
@@ -393,8 +385,19 @@ async function retrieveAndBuildContext(userMessage, history, userContext, weathe
         distTag = `\n[Distance from ${anchor.labels?.[0] || 'your location'}: ${dKm < 1 ? Math.round(dKm * 1000) + 'm' : dKm.toFixed(1) + 'km'}]`;
       }
     }
-    return h.text + distTag;
-  }).join('\n\n---\n\n');
+    return { ...h, annotatedText: h.text + distTag };
+  });
+
+  const pinResult = await pinResultPromise;
+  const shopPinBlock = pinResult?.shopPinBlock || '';
+
+  const hits = pinResult?.shop
+    ? hitsWithDist.filter(h =>
+        h.metadata?.type !== 'service' || h.metadata?.shopId === pinResult.shop._id.toString()
+      )
+    : hitsWithDist;
+
+  const context = hits.map((h) => h.annotatedText).join('\n\n---\n\n');
 
   const reservationBlock = buildReservationBlock(userContext);
   const weatherBlock = buildWeatherBlock(weather);
@@ -563,4 +566,47 @@ function markVectorStoreStale() {
   lastBuiltAt = 0;
 }
 
-module.exports = { buildVectorStore, chat, chatStream, resetVectorStore, markVectorStoreStale };
+/**
+ * Non-blocking background rebuild.
+ * Builds a new vector store in the background while serving from the old one.
+ * Swaps in the new store once ready. No request is blocked.
+ */
+function rebuildInBackground() {
+  if (buildPromise) {
+    console.log('[chatbot] Background rebuild already in progress, skipping.');
+    return;
+  }
+  console.log('[chatbot] Starting background rebuild of vector store...');
+
+  // Capture old store to serve from during rebuild
+  const oldStore = [...vectorStore];
+  const oldReady = storeReady;
+
+  // Reset for rebuild
+  vectorStore = [];
+  storeReady = false;
+  buildPromise = null;
+
+  buildPromise = (async () => {
+    try {
+      await buildVectorStore();
+      console.log(`[chatbot] Background rebuild complete — ${vectorStore.length} chunks indexed.`);
+    } catch (err) {
+      console.error('[chatbot] Background rebuild failed, restoring old store:', err.message);
+      // Restore old store so chat still works
+      vectorStore = oldStore;
+      storeReady = oldReady;
+      lastBuiltAt = Date.now(); // prevent immediate retry
+    } finally {
+      buildPromise = null;
+    }
+  })();
+
+  // Immediately restore old store for serving while rebuild runs
+  if (oldStore.length > 0) {
+    vectorStore = oldStore;
+    storeReady = true;
+  }
+}
+
+module.exports = { buildVectorStore, chat, chatStream, resetVectorStore, markVectorStoreStale, rebuildInBackground };

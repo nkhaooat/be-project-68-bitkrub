@@ -1,4 +1,4 @@
-const { chat, chatStream, buildVectorStore, resetVectorStore } = require('../utils/chatbot');
+const { chat, chatStream, buildVectorStore, resetVectorStore, rebuildInBackground } = require('../utils/chatbot');
 const asyncHandler = require('../middleware/asyncHandler');
 const { fetchWeather, isWeatherQuery } = require('../services/weather');
 const { extractUserContext } = require('../services/userContext');
@@ -107,7 +107,6 @@ exports.chatStreamBot = asyncHandler(async (req, res) => {
  * Admin endpoint to rebuild the vector store.
  */
 exports.rebuildIndex = asyncHandler(async (req, res) => {
-    resetVectorStore();
-    await buildVectorStore();
-    res.json({ success: true, message: 'Vector store rebuilt.' });
+    rebuildInBackground();
+    res.json({ success: true, message: 'Vector store rebuild started in background.' });
 });

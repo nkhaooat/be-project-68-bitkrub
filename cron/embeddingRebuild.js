@@ -1,6 +1,6 @@
 const MassageShop = require('../models/MassageShop');
 const MassageService = require('../models/MassageService');
-const { buildVectorStore, resetVectorStore } = require('../utils/chatbot');
+const { rebuildInBackground } = require('../utils/chatbot');
 
 let lastEmbeddingRebuild = new Date(0); // epoch = never rebuilt
 
@@ -21,16 +21,15 @@ function scheduleEmbeddingRebuild() {
       const newShops = await MassageShop.countDocuments({ createdAt: { $gt: since } });
       const newServices = await MassageService.countDocuments({ createdAt: { $gt: since } });
       if (newShops > 0 || newServices > 0) {
-        console.log(`[cron] Found ${newShops} new shop(s) and ${newServices} new service(s) since last rebuild. Rebuilding embedding...`);
-        resetVectorStore();
-        await buildVectorStore();
+        console.log(`[cron] Found ${newShops} new shop(s) and ${newServices} new service(s) since last rebuild. Rebuilding in background...`);
+        rebuildInBackground();
         lastEmbeddingRebuild = new Date();
-        console.log('[cron] Embedding rebuild complete.');
+        console.log('[cron] Embedding background rebuild started (old store still serving).');
       } else {
         console.log('[cron] No new data since last rebuild — skipping embedding rebuild.');
       }
     } catch (err) {
-      console.error('[cron] Embedding rebuild failed:', err.message);
+      console.error('[cron] Embedding rebuild check failed:', err.message);
     }
     scheduleEmbeddingRebuild();
   }, msUntilMidnight);

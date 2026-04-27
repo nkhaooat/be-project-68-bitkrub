@@ -10,6 +10,8 @@ const helmet = require('helmet');
 const { globalLimiter } = require('./middleware/rateLimit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // Routes
 const shops = require('./routes/shops');
@@ -92,6 +94,9 @@ app.use('/api/v1/promotions', promotions);
 app.use('/api/v1/qr', qr);
 app.use('/api/v1/admin/merchants', merchants);
 app.use('/api/v1/merchant', merchant);
+
+// Swagger API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API root route
 app.get('/', (req, res) => {

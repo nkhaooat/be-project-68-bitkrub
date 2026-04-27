@@ -1,0 +1,5 @@
+node_modules
+uploads
+.git
+__tests__
+docs
