@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Dungeon Inn</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background-color: #0d0d0d;
+      color: #d4c4a8;
+      line-height: 1.8;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      background: #1a1108;
+      border: 1px solid #4a3210;
+      border-radius: 8px;
+      padding: 3rem 2.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid #4a3210;
+      padding-bottom: 1.5rem;
+    }
+
+    header .candle { font-size: 2.5rem; }
+
+    h1 {
+      font-size: 2rem;
+      color: #e8c87a;
+      margin: 0.5rem 0 0.25rem;
+      letter-spacing: 1px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: #8a7a5a;
+    }
+
+    h2 {
+      font-size: 1.15rem;
+      color: #e8c87a;
+      margin: 2rem 0 0.6rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid #8b5e1a;
+    }
+
+    p, li { font-size: 0.95rem; color: #c4b48e; }
+
+    ul {
+      list-style: disc;
+      padding-left: 1.5rem;
+      margin-top: 0.5rem;
+    }
+
+    li { margin-bottom: 0.35rem; }
+
+    a { color: #e8c87a; text-decoration: underline; }
+    a:hover { color: #fff3c0; }
+
+    .highlight {
+      background: #251a05;
+      border: 1px solid #4a3210;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-top: 0.75rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #4a3210;
+      font-size: 0.85rem;
+      color: #6a5a3a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="candle">🕯️</div>
+      <h1>Privacy Policy</h1>
+      <p>Dungeon Inn &mdash; Massage Reservation System &bull; Effective: 27 April 2026</p>
+    </header>
+
+    <p>
+      Dungeon Inn ("we", "our", or "us") is committed to protecting your personal information. This Privacy
+      Policy explains what data we collect, how we use it, and your rights regarding that data when you use
+      our massage reservation platform.
+    </p>
+
+    <h2>1. Information We Collect</h2>
+    <p>We collect the following categories of personal data:</p>
+    <ul>
+      <li><strong>Account data:</strong> name, email address, hashed password, telephone number, and role</li>
+      <li><strong>Reservation data:</strong> booking dates, selected shop, service, promotion codes used, and reservation status</li>
+      <li><strong>Payment data:</strong> payment slip images uploaded for admin verification (no raw card numbers are stored)</li>
+      <li><strong>Review data:</strong> star ratings and comments you submit for completed reservations</li>
+      <li><strong>Usage data:</strong> IP address, HTTP request logs, and rate-limit counters (retained transiently)</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <ul>
+      <li>Create and manage your account and reservations</li>
+      <li>Send transactional emails (booking confirmation, QR codes, cancellation notices, password reset) via <strong>Brevo</strong></li>
+      <li>Verify payment slips and approve or reject bookings</li>
+      <li>Generate and validate QR codes for check-in at partner shops</li>
+      <li>Power the AI chatbot (queries are sent to <strong>OpenAI</strong>; no personally identifiable data is included in chatbot prompts)</li>
+      <li>Display shop images retrieved from the <strong>Google Places API</strong></li>
+      <li>Improve service quality through aggregated, anonymised analytics</li>
+    </ul>
+
+    <h2>3. Third-Party Services</h2>
+    <div class="highlight">
+      <ul>
+        <li><strong>Brevo (Sendinblue)</strong> — transactional email delivery</li>
+        <li><strong>OpenAI</strong> — AI chatbot responses (no PII sent)</li>
+        <li><strong>Google Places API</strong> — shop images and location data</li>
+        <li><strong>MongoDB Atlas</strong> — cloud database hosting</li>
+        <li><strong>Render</strong> — backend hosting and infrastructure</li>
+        <li><strong>Vercel</strong> — frontend hosting</li>
+      </ul>
+    </div>
+    <p style="margin-top:0.75rem;">Each third party operates under its own privacy policy. We do not sell your data to any party.</p>
+
+    <h2>4. Data Retention</h2>
+    <ul>
+      <li>Account data is retained for as long as your account is active</li>
+      <li>Completed or cancelled reservation records are kept for a minimum of 1 year for audit purposes</li>
+      <li>Payment slip images are kept until the associated reservation is settled</li>
+      <li>QR tokens are voided and purged by an automated cron job once expired or cancelled</li>
+    </ul>
+
+    <h2>5. Data Security</h2>
+    <ul>
+      <li>Passwords are hashed with <strong>bcryptjs</strong> before storage — plain-text passwords are never saved</li>
+      <li>Authentication uses short-lived <strong>JWT tokens</strong> delivered via HTTP-only cookies</li>
+      <li>All API traffic is served over <strong>HTTPS</strong></li>
+      <li>Rate limiting and security headers (Helmet.js) are applied to all endpoints</li>
+    </ul>
+
+    <h2>6. Your Rights</h2>
+    <p>You have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> the personal data we hold about you</li>
+      <li><strong>Correct</strong> inaccurate data via the profile update endpoint</li>
+      <li><strong>Delete</strong> your account by contacting us (see Section 8)</li>
+      <li><strong>Object</strong> to processing in certain circumstances</li>
+    </ul>
+
+    <h2>7. Cookies</h2>
+    <p>
+      We use a single HTTP-only session cookie to store your JWT authentication token. No advertising
+      or tracking cookies are used.
+    </p>
+
+    <h2>8. Contact Us</h2>
+    <div class="highlight">
+      <p>For any privacy-related questions or data deletion requests, please contact us at:</p>
+      <p style="margin-top:0.5rem;">
+        <strong>Email:</strong> <a href="mailto:natchanon2549non@gmail.com">natchanon2549non@gmail.com</a><br />
+        <strong>Project:</strong> Dungeon Inn &mdash; CEDT68 Software Engineering (2110503)
+      </p>
+    </div>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>
+      We may update this Privacy Policy from time to time. The effective date at the top of this page will
+      reflect the most recent revision. Continued use of Dungeon Inn after changes constitutes acceptance
+      of the updated policy.
+    </p>
+
+    <footer>
+      <p>&copy; 2026 Dungeon Inn. All rights reserved.</p>
+      <p style="margin-top:0.4rem;">
+        <a href="https://be-project-68-bitkrub.onrender.com/api-docs">API Docs</a>
+        &bull;
+        <a href="https://fe-project-68-addressme.vercel.app">Frontend</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
