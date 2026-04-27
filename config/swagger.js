@@ -18,6 +18,7 @@ const options = {
       },
     },
     servers: [
+      { url: 'https://be-project-68-bitkrub.onrender.com', description: 'Production' },
       { url: 'http://localhost:5000', description: 'Local development' },
     ],
     components: {
