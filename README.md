@@ -200,13 +200,14 @@ npm start       # production
 │   ├── google/places.js        # Google Places v1 API
 │   └── prompts/chatbot-system.js  # System prompt templates
 ├── __tests__/
+│   ├── epic1-shops.test.js
+│   ├── epic2-chatbot.test.js
 │   ├── epic3-google-places.test.js
 │   ├── epic4-promotions.test.js
 │   ├── epic5-reviews.test.js
 │   ├── epic6-qr-email.test.js
-│   ├── epic7-merchant.test.js
-│   ├── reservations.test.js
-│   └── shops.test.js
+│   ├── epic6-reservations.test.js
+│   └── epic7-merchant.test.js
 ├── scripts/                     # Utility scripts
 ├── testcase/                    # Postman collections
 ├── docs/                        # Sprint backlog
@@ -312,7 +313,7 @@ npm start       # production
 npm test
 ```
 
-Covers: Google Places integration, promotions, reviews, QR/email workflow, merchant registration, reservations, shops.
+Covers: shops, chatbot/RAG, Google Places integration, promotions, reviews, QR/email workflow, reservations, merchant registration.
 
 ### Postman (Integration)
 1. Import `testcase/massage-reservation-tests.json`
@@ -418,12 +419,18 @@ We use a single HTTP-only session cookie to store your JWT authentication token.
 
 For any privacy-related questions or data deletion requests, please contact us at:
 
-- **Email:** 6833080621.student.chula.ac.th
+- **Email:** aotmetrasit@gmail.com
 - **Project:** Dungeon Inn — CEDT68 Software Engineering (2110503)
 
 ### 9. Changes to This Policy
 
 We may update this Privacy Policy from time to time. The effective date at the top of this section will reflect the most recent revision. Continued use of Dungeon Inn after changes constitutes acceptance of the updated policy.
+
+---
+
+## 📧 Contact
+
+For questions or data deletion requests: **aotmetrasit@gmail.com**
 
 ---
 
