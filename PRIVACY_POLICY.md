@@ -84,7 +84,7 @@ We use a single HTTP-only session cookie to store your JWT authentication token.
 
 For any privacy-related questions or data deletion requests, please contact us at:
 
-- **Email:** natchanon2549non@gmail.com
+- **Email:** 6833080621.student.chula.ac.th
 - **Project:** Dungeon Inn — CEDT68 Software Engineering (2110503)
 
 ---
