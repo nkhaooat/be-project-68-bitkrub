@@ -114,7 +114,7 @@
 | US6-4 | As a customer, I should receive confirmation email with QR code | Done | 4 |
 | US6-5 | As an admin, when booking is completed, email requests review | Done | 3 |
 | US6-6 | As an admin, when booking is cancelled, email sent and QR voided | Done | 2 |
-| US6-7 | As an admin, I want integration tests for QR workflow | Partial (known test issues) | 3 |
+| US6-7 | As an admin, I want integration tests for QR workflow | Done | 3 |
 | US6-8 | As an admin, I want to invalidate all expired QR codes | Done | 2 |
 
 **Acceptance Criteria:**
@@ -144,7 +144,7 @@
 | US7-5 | As a merchant, I want CRUD for my shop and service | Done | 8 |
 | US7-6 | As a merchant, I want to scan QR from my customer | Done | 1 |
 | US7-7 | As an admin, I want users to click a link for requesting service account | Done | 1 |
-| US7-8 | As an admin, I want to verify all QR workflow runs successfully | Partial | 4 |
+| US7-8 | As an admin, I want to verify all QR workflow runs successfully | Done | 4 |
 
 ### EPIC 8 - Merchant Dashboard
 

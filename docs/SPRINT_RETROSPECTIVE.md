@@ -68,16 +68,16 @@ Sprint 2 focused on expanding the platform with Google Places integration, promo
 
 | # | Action Item | Priority | Owner |
 |---|------------|----------|-------|
-| 1 | Increase E2E test coverage with Playwright for Sprint 2 features | High | QA |
-| 2 | Migrate file uploads to cloud storage (S3/Cloudinary) | High | Backend |
-| 3 | Add WebSocket for real-time booking updates | Med | Full-stack |
-| 4 | Implement proper HTML email templates with Brevo | Med | Backend |
-| 5 | Add rate limiting per user (not just global) | Med | Backend |
-| 6 | Set up CI/CD pipeline with GitHub Actions | Med | DevOps |
-| 7 | Add i18n/multi-language support (Thai + English) | Low | Frontend |
-| 8 | Performance testing and optimization | Low | Full-stack |
-| 9 | Add self-signed HTTPS for local QR scanner testing | Med | DevOps |
-| 10 | Admin dashboard analytics (charts, revenue graphs) | Low | Full-stack |
+| 1 | Increase E2E test coverage with Playwright for Sprint 2 features | High | QA | ✅ Done — 8 spec files covering all EPICs |
+| 2 | Migrate file uploads to cloud storage (S3/Cloudinary) | High | Backend | Deferred — local storage sufficient for course project |
+| 3 | Add WebSocket for real-time booking updates | Med | Full-stack | Deferred |
+| 4 | Implement proper HTML email templates with Brevo | Med | Backend | Deferred — functional emails sufficient |
+| 5 | Add rate limiting per user (not just global) | Med | Backend | Deferred |
+| 6 | Set up CI/CD pipeline with GitHub Actions | Med | DevOps | Deferred |
+| 7 | Add i18n/multi-language support (Thai + English) | Low | Frontend | Partial — chatbot supports Thai |
+| 8 | Performance testing and optimization | Low | Full-stack | Deferred |
+| 9 | Add self-signed HTTPS for local QR scanner testing | Med | DevOps | ✅ Done — localhost treated as secure context |
+| 10 | Admin dashboard analytics (charts, revenue graphs) | Low | Full-stack | Deferred |
 
 ---
 
@@ -108,3 +108,39 @@ Sprint 2 focused on expanding the platform with Google Places integration, promo
 ---
 
 *Sprint 2 Retrospective — Team Namthom (Group 68-2) — April 2026*
+
+---
+
+# Sprint 3 Retrospective — Team Namthom
+
+**Project:** Dungeon Inn — Massage Reservation System  
+**Sprint:** Sprint 3 (April 27, 2026) — Final Polish  
+**Duration:** 1 day  
+**Team:** Namthom (Group 68-2)
+
+---
+
+## Sprint Overview
+
+Sprint 3 focused on documentation, Docker setup, privacy policy, and final polish before submission.
+
+| Task | Status |
+|------|--------|
+| Privacy policy page (`/privacy`) | ✅ Done |
+| Contact email updated to `aotmetrasit@gmail.com` | ✅ Done |
+| Swagger UI — add production server | ✅ Done |
+| Backend Dockerfile + docker-compose | ✅ Done |
+| Frontend docker-compose | ✅ Done |
+| Testing guides (`docs/TESTING.md`) | ✅ Done |
+| Skeleton loading with shimmer animation | ✅ Done |
+| All docs reviewed and updated | ✅ Done |
+
+## What Went Well 🎉
+
+1. **Docker setup completed** — Both FE and BE now have working `docker-compose.yml` with one-command startup.
+2. **Documentation audit** — All docs reviewed, outdated test lists corrected, partial statuses resolved.
+3. **Privacy compliance** — Full privacy policy page, contact email consistent across all surfaces.
+
+---
+
+*Sprint 3 Retrospective — Team Namthom (Group 68-2) — April 2026*

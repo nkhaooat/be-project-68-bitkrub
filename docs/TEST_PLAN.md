@@ -192,19 +192,27 @@ This test plan defines the testing strategy for the Dungeon Inn massage reservat
 
 | Test File | EPIC | Tests | Coverage |
 |-----------|------|-------|----------|
+| epic1-shops.test.js | EPIC 1 | Shop CRUD, TikTok links | Statements, Functions, Lines 100% |
+| epic2-chatbot.test.js | EPIC 2 | RAG chatbot, vector store, streaming | 100% |
 | epic3-google-places.test.js | EPIC 3 | Google photo proxy, MongoDB fallback, admin/user access | Statements, Functions, Lines 100% |
 | epic4-promotions.test.js | EPIC 4 | Promo validation, percentage/flat discount, min price, max discount, expired codes | 100% |
 | epic5-reviews.test.js | EPIC 5 | Create review, duplicate prevention, shop reviews, own reviews | 100% |
 | epic6-qr-email.test.js | EPIC 6 | QR verify (owner, admin, valid, invalid, cancelled, wrong user, expired) | 100% |
+| epic6-reservations.test.js | EPIC 6 | Reservation CRUD, slip upload, payment verify | 100% |
 | epic7-merchant.test.js | EPIC 7 | Merchant registration, admin approve/reject, access control (own shop, other shop, pending) | 100% |
-| reservations.test.js | EPIC 6 | Reservation CRUD, slip upload, payment verify | 100% |
-| shops.test.js | EPIC 1 | Shop CRUD, TikTok links | 100% |
 
 ### 5.2 Frontend E2E Tests
 
 | Test File | EPIC | Tests |
 |-----------|------|-------|
+| e2e/auth.spec.ts | Auth | Register, login, logout, protected routes |
+| e2e/chatbot.spec.ts | EPIC 2 | AI chat widget, streaming responses, booking via chat |
+| e2e/google-places-reviews.spec.ts | EPIC 3/5 | Shop images from Google, review submission & display |
+| e2e/merchant.spec.ts | EPIC 7/8 | Merchant dashboard, service CRUD, reservation management |
+| e2e/profile-admin-nav.spec.ts | Profile/Admin | Profile page, admin sidebar navigation |
+| e2e/promotions-qr.spec.ts | EPIC 4/6 | Promo code apply, QR code display & download |
 | e2e/tiktok-epic.spec.ts | EPIC 1 | Shop page, shop detail, TikTok button |
+| e2e/tiktok-url-validation.spec.ts | EPIC 1 | Valid/invalid TikTok URL handling |
 
 ### 5.3 Running Tests
 
