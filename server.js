@@ -51,6 +51,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Security headers
+app.set('trust proxy', 1); // Render terminates TLS — trust X-Forwarded-Proto for correct req.protocol
+
 app.use(helmet({
   contentSecurityPolicy: false, // Next.js handles its own CSP
   crossOriginEmbedderPolicy: false, // Allow Google Maps embeds
