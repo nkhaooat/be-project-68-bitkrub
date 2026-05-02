@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, registerMerchant, login, getMe, logout, forgotPassword, resetPassword, changePassword, updateProfile } = require('../controllers/auth');
+const { register, registerMerchant, login, getMe, logout, forgotPassword, resetPassword, changePassword, updateProfile, updatePdpaConsent } = require('../controllers/auth');
 
 /**
  * @swagger
@@ -25,6 +25,13 @@ const { register, registerMerchant, login, getMe, logout, forgotPassword, resetP
  *               name: { type: string, example: "John Doe" }
  *               email: { type: string, example: "john@example.com" }
  *               password: { type: string, example: "password123" }
+ *               pdpaConsent:
+ *                 type: object
+ *                 properties:
+ *                   personalData: { type: boolean, example: true }
+ *                   bookingEmails: { type: boolean, example: true }
+ *                   aiChatbot: { type: boolean, example: false }
+ *                   publicReviews: { type: boolean, example: false }
  *     responses:
  *       200: { description: User registered, JWT cookie set }
  *       400: { description: Validation error or duplicate email }
@@ -189,5 +196,6 @@ router.post('/forgotpassword', forgotPassword);
 router.put('/resetpassword', resetPassword);
 router.put('/changepassword', protect, changePassword);
 router.put('/profile', protect, updateProfile);
+router.put('/pdpa-consent', protect, updatePdpaConsent);
 
 module.exports = router;

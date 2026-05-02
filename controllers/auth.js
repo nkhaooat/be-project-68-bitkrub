@@ -20,8 +20,8 @@ const sendTokenResponse = (user, statusCode, res) => {
 //@route    POST /api/v1/auth/register
 //@access   Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, telephone, password, role } = req.body;
-  const user = await User.create({ name, email, telephone, password, role });
+  const { name, email, telephone, password, role, pdpaConsent } = req.body;
+  const user = await User.create({ name, email, telephone, password, role, pdpaConsent, pdpaConsentedAt: pdpaConsent ? Date.now() : null });
   sendTokenResponse(user, 200, res);
 });
 
@@ -169,6 +169,28 @@ exports.changePassword = asyncHandler(async (req, res, next) => {
   await user.save();
 
   res.status(200).json({ success: true, message: 'Password changed successfully' });
+});
+
+// @desc    Update PDPA consent
+// @route   PUT /api/v1/auth/pdpa-consent
+// @access  Private
+exports.updatePdpaConsent = asyncHandler(async (req, res, next) => {
+  const { personalData, bookingEmails, aiChatbot, publicReviews } = req.body;
+
+  // personalData and bookingEmails are required for the app to function
+  if (!personalData || !bookingEmails) {
+    return res.status(400).json({
+      success: false,
+      message: 'Personal data and booking email consents are required'
+    });
+  }
+
+  const user = await User.findByIdAndUpdate(req.user.id, {
+    pdpaConsent: { personalData, bookingEmails, aiChatbot, publicReviews },
+    pdpaConsentedAt: Date.now()
+  }, { new: true });
+
+  res.status(200).json({ success: true, data: user });
 });
 
 // @desc    Update profile (name, email, telephone)

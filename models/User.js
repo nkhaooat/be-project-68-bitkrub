@@ -47,7 +47,14 @@ const UserSchema=new mongoose.Schema({
     createdAt:{
         type: Date,
         default:Date.now
-    }
+    },
+    pdpaConsent: {
+        personalData: { type: Boolean, default: false },
+        bookingEmails: { type: Boolean, default: false },
+        aiChatbot: { type: Boolean, default: false },
+        publicReviews: { type: Boolean, default: false },
+    },
+    pdpaConsentedAt: { type: Date, default: null },
 });
 
 // Encrypt password using bcrypt
